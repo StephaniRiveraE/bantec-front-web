@@ -1,0 +1,41 @@
+name: Deploy BANTEC to GCP
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 30m
+          script: |
+            # Ensure swap exists for builds
+            if [ ! -f /swapfile ]; then
+              sudo fallocate -l 2G /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+            fi
+            
+            cd ~/BANTEC
+            git pull origin main
+            
+            # Build with no-cache to ensure fresh images
+            sudo docker compose -f docker-compose.prod.yml build --no-cache
+            
+            # Force recreate ALL containers with new images
+            sudo docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
+            
+            # Restart nginx to ensure config is loaded
+            sudo docker restart nginx-proxy-bantec || true
+            
+            echo "✅ BANTEC Deploy completado: $(date)"

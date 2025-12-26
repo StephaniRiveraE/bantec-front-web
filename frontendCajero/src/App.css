@@ -1,0 +1,19 @@
+.header{
+  background:var(--dark);
+  color:#fff;
+  padding:12px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.header .left{font-weight:700}
+.header .right{display:flex;gap:12px;align-items:center}
+.header .user{font-size:0.95rem}
+.logo{font-weight:800}
+.card{
+  background:var(--card);
+  padding:16px;
+  border-radius:10px;
+  box-shadow:0 2px 8px rgba(2,6,23,0.06);
+}
+.small-muted{color:var(--muted);font-size:0.9rem}

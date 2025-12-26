@@ -1,0 +1,137 @@
+/* Make sure html/body have no margins and no page scrollbars for this page */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.login-page {
+  display: flex;
+  height: 100vh;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px;
+  box-sizing: border-box;
+  overflow: hidden;
+  width: 100vw;
+}
+
+.left, .right {
+  box-sizing: border-box;
+}
+
+.login-box {
+  background: white;
+  padding: 36px 28px;
+  border-radius: 16px;
+  width: 420px;
+  max-width: 96vw;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+}
+
+.step-group { margin-bottom: 6px; }
+.step-group .inputGroup { margin-bottom: 6px; }
+
+/* Center everything and stack on small screens */
+@media (max-width: 900px) {
+  .login-page {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .left, .right {
+    width: 100%;
+    padding: 8px 12px;
+  }
+
+  .login-box {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .login-logo {
+    text-align: center;
+    width: 100%;
+    display: block;
+    margin: 0 auto 12px auto;
+  }
+
+  .right {
+    text-align: center;
+    margin-top: 18px;
+  }
+}
+
+/* On larger screens keep the right column vertically centered */
+@media (min-width: 901px) {
+  .right { display: flex; align-items: center; justify-content: center; }
+}
+
+/* Ensure both sides have similar min height so they stay aligned and static */
+.login-box, .right-card { min-height: 520px; }
+
+/* ensure inner content can scroll if viewport is small without moving the page scrollbar */
+.login-box, .right-card { max-height: calc(100vh - 48px); overflow: auto; }
+
+/* Recommendations card and image fixes */
+.right-card {
+  background: #eef2f6;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.reco-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #243b55;
+}
+.reco-list {
+  font-size: 16px;
+  line-height: 1.4;
+  padding-left: 18px;
+  text-align: left;
+  margin: 0 0 12px 0;
+}
+.reco-list li { margin-bottom: 8px; }
+
+.reco-avatar {
+  width: 360px;
+  height: 360px;
+  background: #cfd6dd;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-top: 4px;
+  margin-left: 0;
+}
+.reco-icon { width: 240px; height: 240px; object-fit: contain; display: block; }
+
+@media (max-width: 1200px) {
+  .reco-avatar { width: 280px; height: 280px; }
+  .reco-icon { width: 180px; height: 180px; }
+  .login-box { width: 380px; }
+  .login-box, .right-card { min-height: 440px; }
+}
+
+@media (max-width: 900px) {
+  .right-card { padding: 16px; }
+  .reco-title { font-size: 20px; }
+  .reco-list { font-size: 15px; }
+  .reco-avatar { width: 160px; height: 160px; }
+  .reco-icon { width: 100px; height: 100px; }
+  .login-box { width: 100%; min-height: auto; }
+  .login-box, .right-card { min-height: auto; }
+}

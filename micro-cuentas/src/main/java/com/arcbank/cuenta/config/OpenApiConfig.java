@@ -1,0 +1,32 @@
+package com.arcbank.cuenta.config; // PAQUETE CORREGIDO (PLURAL)
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+
+@Configuration
+public class OpenApiConfig {
+
+    @Bean
+    public OpenAPI customOpenAPI() {
+        return new OpenAPI()
+                .info(new Info()
+                        .title("ARCBANK - Microservicio Cuentas API")
+                        .version("v1") // Coincide con tu ruta /api/v1/...
+                        .description("API para la gestión de cuentas de ahorro, tipos de cuenta y tasas de interés"));
+    }
+
+    // Vital para manejar LocalDate y LocalDateTime correctamente en los JSON
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
+}

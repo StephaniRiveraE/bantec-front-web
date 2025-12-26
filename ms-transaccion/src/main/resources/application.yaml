@@ -1,0 +1,64 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: ms-transaccion
+
+  datasource:
+    # URL de conexión. Si usas Docker Compose, recuerda cambiar localhost por el nombre del servicio db
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/db_transacciones}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:admin}
+    driver-class-name: org.postgresql.Driver
+
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+      # CRÍTICO: Esto evita que Hibernate convierta "IdTransaccion" a "id_transaccion".
+      # Al usar tablas con comillas en Postgres, necesitamos respetar las mayúsculas exactas de tu SQL.
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+# --- CONFIGURACIÓN PERSONALIZADA (FEIGN) ---
+app:
+  feign:
+    # Aquí defines la URL donde vive el microservicio de Cuentas.
+    # Si 'ms-cuentas' corre en otro puerto o IP, cámbialo aquí.
+    cuentas-url: ${CUENTAS_URL:http://localhost:8081}
+  
+  # Configuración del Switch Interbancario DIGICONECU
+  switch:
+    url: ${APP_SWITCH_URL:http://34.172.224.240:9080}
+    network-url: ${APP_SWITCH_URL:http://34.172.224.240:9080}
+  
+  # Código del banco (para identificarse ante el switch)
+  banco:
+    codigo: ${BANCO_CODIGO:BANTEC}
+
+# --- CONFIGURACIÓN SWAGGER / OPENAPI ---
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    # Opcional: Ordena los métodos (GET, POST, PUT) en la UI
+    operations-sorter: method
+
+logging:
+  level:
+    com.arcbank.cbs.transaccion: DEBUG
+    org.springframework.web: INFO
+    # Útil para ver las peticiones que hace Feign
+    com.arcbank.cbs.transaccion.client: DEBUG

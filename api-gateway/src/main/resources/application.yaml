@@ -1,0 +1,88 @@
+server:
+  port: 8080 # El puerto público principal
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      # Configuración CORS global
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "http://localhost:3001"
+              - "http://34.41.171.65:3000"
+              - "http://34.41.171.65:3001"
+              - "http://107.178.215.37:4000"
+              - "http://107.178.215.37:4001"
+              - "http://frontend-web:80"
+              - "http://frontend-cajero:80"
+              # HTTPS sslip.io domains
+              - "https://bantec.34-41-171-65.sslip.io"
+              - "https://bantec.34-41-171-65.sslip.io:8443"
+              - "https://arcbank.107-178-215-37.sslip.io"
+              - "https://arcbank.107-178-215-37.sslip.io:8443"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+      routes:
+        # RUTA 1: CLIENTES
+        - id: clientes-service
+          uri: http://micro-clientes:8080
+          predicates:
+            - Path=/api/v1/clientes/**
+
+        # RUTA 2: PERSONAS
+        - id: personas-service
+          uri: http://micro-clientes:8080
+          predicates:
+            - Path=/api/v1/personas/**
+
+        # RUTA 3: EMPRESAS
+        - id: empresas-service
+          uri: http://micro-clientes:8080
+          predicates:
+            - Path=/api/v1/empresas/**
+
+        # RUTA 4: CUENTAS AHORROS
+        - id: cuentas-ahorros-service
+          uri: http://micro-cuentas:8081
+          predicates:
+            - Path=/api/v1/cuentas/ahorros/**
+
+        # RUTA 5: TASAS DE INTERÉS
+        - id: tasas-service
+          uri: http://micro-cuentas:8081
+          predicates:
+            - Path=/api/v1/cuentas/tasas/**
+
+        # RUTA 6: TIPOS DE CUENTA
+        - id: tipos-cuenta-service
+          uri: http://micro-cuentas:8081
+          predicates:
+            - Path=/api/v1/cuentas/tipos-cuenta/**
+
+        # RUTA 7: TRANSACCIONES
+        - id: transacciones-service
+          uri: http://ms-transaccion:8080
+          predicates:
+            - Path=/api/transacciones/**
+
+        # RUTA 8: BANCOS (Lista de bancos del switch interbancario)
+        - id: bancos-service
+          uri: http://ms-transaccion:8080
+          predicates:
+            - Path=/api/bancos/**
+
+# Configuración para ver los logs de ruteo (útil para debug)
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty: INFO

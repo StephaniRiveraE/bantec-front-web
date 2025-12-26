@@ -1,0 +1,43 @@
+/* Responsive shared utilities for frontendWeb */
+
+/* Global typography adjustments for small screens */
+@media (max-width: 900px) {
+  h1 { font-size: 20px; }
+  h2 { font-size: 18px; }
+  h3 { font-size: 16px; }
+}
+
+/* Reduce padding on cards and panels */
+@media (max-width: 900px) {
+  .card { padding: 12px !important; }
+  .main, .header-inline { padding-left: 12px; padding-right: 12px; }
+}
+
+/* Hide non-essential small text in headers on narrow screens */
+@media (max-width: 640px) {
+  .header-inline .small { display: none; }
+  .profile-mini { display: none; }
+}
+
+/* Buttons and inputs full-width on narrow screens */
+@media (max-width: 640px) {
+  .btn, .btn.ghost { width: 100%; }
+  .input { width: 100%; }
+}
+
+/* Make quick lists stack vertically */
+@media (max-width: 640px) {
+  .nav-list { flex-direction: row !important; overflow-x: auto; }
+  .nav-list li, .nav-list a { white-space: nowrap; }
+}
+
+/* Login page responsive tweaks */
+.login-page { display: flex; height: 100vh; }
+.login-page .left, .login-page .right { flex: 1; }
+@media (max-width: 900px) {
+  .login-page { flex-direction: column; }
+  .login-page .left { order: 1; padding: 20px !important; }
+  .login-page .right { order: 2; padding: 20px !important; }
+  .login-page .loginBox { width: 100% !important; padding: 20px !important; box-shadow: none !important; }
+  .login-page img { width: 140px !important; margin: 0 auto; }
+}

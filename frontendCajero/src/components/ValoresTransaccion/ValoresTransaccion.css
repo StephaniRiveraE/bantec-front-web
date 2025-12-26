@@ -1,0 +1,365 @@
+.retiro-page {
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+
+.retiro-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 40px;
+  border-bottom: 1px solid #ddd;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.rh-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.rh-logo {
+  height: 45px;
+}
+
+.rh-cajero {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rh-user-icon {
+  width: 36px;
+  height: 36px;
+  background: #ffb300;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.rh-user-icon i {
+  color: #000;
+  font-size: 18px;
+}
+
+.rh-cajero-name {
+  font-weight: 600;
+}
+
+.rh-center {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.rh-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.rh-link {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rh-link i {
+  font-size: 16px;
+}
+
+
+.retiro-main {
+  padding: 25px 80px;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.cedula-row {
+  margin-bottom: 35px;
+}
+
+.cedula-label {
+  display: block;
+  margin-bottom: 30px;
+  font-size: 25px;
+}
+
+.cedula-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cedula-input {
+  flex: 1;
+  border-radius: 30px;
+  border: 1px solid #f0b201;
+  padding: 10px 28px;
+  font-size: 14px;
+}
+
+.btn-buscar {
+  background: #ffb300;
+  border: none;
+  padding: 10px 45px;     
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 140px;      
+  transition: 0.2s;
+}
+.btn-buscar:hover {
+  background: #e09f00;
+}
+
+
+.retiro-panel {
+  margin-top: 12px;
+  background: #d7d7d7;
+  border-radius: 18px;
+  padding: 25px 45px;
+  display: flex;
+  gap: 40px;
+  align-items: stretch;
+}
+
+.retiro-left,
+.retiro-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.retiro-left {
+   flex: 0 0 48%;                
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.retiro-right {
+   flex: 0 0 30%;                
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 10px; 
+}
+
+.retiro-divider {
+  flex: 0 0 1px;               
+  background: #bcbcbc;          
+  margin: 0 25px;
+}
+
+
+.retiro-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: 14px;
+}
+
+.field-input {
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid #c3c3c3;
+  font-size: 14px;
+  background: #f4f4f4;
+}
+
+.monto-input {
+  background: #ffffff;
+}
+
+
+.retiro-error {
+  margin-top: 12px;
+  color: #b71c1c;
+}
+
+
+.retiro-buttons {
+  width: 1660px;
+  display: flex;
+  justify-content: center;   
+  gap: 30px;
+  margin-top: 45px;
+}
+
+.rh-hamburger {
+  display: none;
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.mobile-menu {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  /* Keep header single-line and prevent wrapping */
+  .retiro-header { position: relative; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; height: 64px; }
+
+  /* Left fixed size, center flexible, right fixed size */
+  .rh-left { order: 1; display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+  .rh-center { order: 2; flex: 1 1 auto; text-align: center; display: block; padding: 0 88px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 16px; }
+  .rh-right { order: 3; display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+
+  /* Hide full link buttons in header on small screens (keep hamburger only) */
+  .rh-right .rh-link { display: none; }
+
+  /* Hamburger fixed at right edge (not below text) */
+  .rh-hamburger {
+    display: inline-block;
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1300;
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 6px 8px;
+  }
+
+  /* Mobile menu overlays below header so it doesn't push/hide the logo */
+  .mobile-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 12px;
+    z-index: 1200;
+    background: #ffffff;
+    border: 1px solid #e6e6e6;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    padding: 8px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 160px;
+  }
+
+  /* In the mobile menu, show icon + text */
+  .mobile-menu .rh-link { display: flex; align-items: center; gap: 8px; font-size: 15px; padding: 8px; }
+  .mobile-menu .rh-link .link-text { display: inline; }
+}
+
+.btn-amarillo {
+  background: #ffb300;
+  border: none;
+  padding: 10px 30px;
+  border-radius: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-cancelar {
+  background: linear-gradient(180deg, #ffb300, #f08c00);
+}
+
+
+
+.deposito-page .deposit-panel {
+  width: 1100px;     
+  max-width: 95%;    
+  margin: 0 auto;    
+  background: #d7d7d7;
+  border-radius: 18px;
+  padding: 30px 50px 35px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+
+.deposit-top-row {
+   display: flex;
+  align-items: stretch; 
+  width: 100%;
+  min-height: 240px; 
+}
+
+
+.deposit-col {
+ flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%; 
+}
+
+
+.deposit-divider {
+  width: 2px;
+  background: #909090;
+  margin: 0 35px;
+  align-self: stretch;      
+  opacity: 1;
+}
+
+
+.deposit-monto-row {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.deposit-monto-row .monto-input {
+  width: 160px;
+  background: #ffffff;
+}
+
+
+.deposit-buttons-row {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .retiro-header { flex-direction: column; align-items: flex-start; gap: 12px; padding: 12px; }
+  .rh-center { order: 3; font-size: 16px; }
+  .rh-right { order: 2; display: flex; gap: 8px; }
+  .rh-left { order: 1; }
+
+  .retiro-main { padding: 16px; }
+  .retiro-panel { flex-direction: column; padding: 18px; gap: 12px; }
+  .retiro-left, .retiro-right { flex: 1 1 auto; }
+  .retiro-divider { display: none; }
+
+  .cedula-input-row { flex-direction: column; align-items: stretch; }
+  .btn-buscar { width: 100%; padding: 10px; min-width: 0; }
+
+  .retiro-buttons { width: 100%; justify-content: center; }
+  .btn-amarillo { width: 48%; }
+
+  .deposit-top-row { flex-direction: column; min-height: auto; }
+  .deposit-divider { display: none; }
+  .deposit-monto-row .monto-input { width: 100%; }
+  .deposit-panel { padding: 16px; }
+}
+
+@media (max-width: 480px) {
+  .rh-logo { height: 36px; }
+  .cedula-label { font-size: 20px; margin-bottom: 16px; }
+  .field-input, .cedula-input { padding: 10px; }
+  .btn-buscar { padding: 10px; }
+}
+

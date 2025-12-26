@@ -1,0 +1,244 @@
+/* Movimientos.css Mejorado */
+.mov-page {
+  padding: 40px 20px;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.mov-container {
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+}
+
+.mov-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 30px;
+  text-align: center;
+  color: #1a202c;
+  letter-spacing: -0.5px;
+}
+
+.mov-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.mov-account-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 250px;
+}
+
+.mov-account-selector label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mov-select {
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  font-size: 1rem;
+  color: #2d3748;
+  background-color: #fff;
+  transition: all 0.2s;
+  outline: none;
+  cursor: pointer;
+}
+
+.mov-select:focus {
+  border-color: #3182ce;
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.mov-balance-card {
+  background: linear-gradient(135deg, #3182ce 0%, #2b6cb0 100%);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 4px 15px rgba(49, 130, 206, 0.3);
+  min-width: 200px;
+}
+
+.mov-balance-label {
+  font-size: 0.8rem;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.mov-balance-amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.mov-refresh-btn {
+  background: white;
+  border: 1px solid #e2e8f0;
+  color: #4a5568;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mov-refresh-btn:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+  transform: translateY(-1px);
+}
+
+.mov-list-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.mov-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mov-table th {
+  background: #f7fafc;
+  padding: 16px 24px;
+  text-align: left;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.mov-table td {
+  padding: 20px 24px;
+  border-bottom: 1px solid #edf2f7;
+  color: #2d3748;
+  vertical-align: middle;
+}
+
+.mov-table tr:last-child td {
+  border-bottom: none;
+}
+
+.mov-table tr:hover {
+  background-color: #f8faff;
+}
+
+.mov-date {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.9rem;
+  color: #4a5568;
+}
+
+.mov-type-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mov-type-badge.credit {
+  background-color: #c6f6d5;
+  color: #276749;
+}
+
+.mov-type-badge.debit {
+  background-color: #fed7d7;
+  color: #9b2c2c;
+}
+
+.mov-desc {
+  font-weight: 500;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mov-amount {
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.mov-amount.credit { color: #38a169; }
+.mov-amount.debit { color: #e53e3e; }
+
+.mov-saldo {
+  font-family: 'Roboto Mono', monospace;
+  color: #718096;
+  font-weight: 500;
+}
+
+.mov-empty {
+  padding: 60px;
+  text-align: center;
+  color: #a0aec0;
+}
+
+.mov-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mov-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .mov-table thead { display: none; }
+  .mov-table, .mov-table tbody, .mov-table tr, .mov-table td {
+    display: block;
+    width: 100%;
+  }
+  
+  .mov-table tr {
+    margin-bottom: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+  }
+  
+  .mov-table td {
+    padding: 8px 0;
+    border: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .mov-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #718096;
+    font-size: 0.85rem;
+  }
+}

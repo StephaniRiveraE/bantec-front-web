@@ -1,0 +1,26 @@
+:root{
+  --bg:#f4f6f8;
+  --primary:#d32f2f;
+  --accent:#0b7;
+  --dark:#111;
+  --muted:#6b7280;
+  --card:#ffffff;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);color:#111}
+.screen{max-width:920px;margin:24px auto;padding:20px}
+a{color:inherit}
+button{cursor:pointer}
+input,textarea{font-family:inherit}
+
+/* Responsive tweaks for cajero */
+@media (max-width: 900px) {
+  .screen { max-width: 100%; margin: 12px; padding: 12px; }
+}
+
+@media (max-width: 480px) {
+  .screen { margin: 8px; padding: 8px; }
+  .logo { max-width: 140px; }
+}
+
+@import './styles/responsive.css';
