@@ -34,3 +34,21 @@ Thumbs.db
 
 # Docker
 .docker/
+
+# Certificados privados (NO subir al repositorio)
+**/*.key
+**/*.p12
+**/bantec-keystore.p12
+**/bantec-truststore.p12
+nginx/certs/*.pem
+nginx/certs/*.key
+nginx/certs/*.crt
+
+# Archivos de configuración sensibles
+**/*.env
+**/secrets/
+**/.secrets/
+
+# Logs
+**/logs/
+**/*.log
