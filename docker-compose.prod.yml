@@ -175,8 +175,8 @@ services:
       DB_PASS: admin
       SERVER_PORT: 8080
       CUENTAS_URL: http://micro-cuentas:8081
-      # Switch Interbancario DIGICONECU (IP PUBLICA)
-      APP_SWITCH_URL: http://34.44.123.236:9080
+      # Switch Interbancario DIGICONECU (IP PUBLICA de Google Cloud)
+      APP_SWITCH_URL: http://35.208.155.21:9080
       BANCO_CODIGO: BANTEC
     ports:
       - "8082:8080"

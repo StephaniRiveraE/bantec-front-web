@@ -18,7 +18,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
       # CRÍTICO: Esto evita que Hibernate convierta "IdTransaccion" a "id_transaccion".
       # Al usar tablas con comillas en Postgres, necesitamos respetar las mayúsculas exactas de tu SQL.
       naming:
@@ -39,12 +39,22 @@ app:
   
   # Configuración del Switch Interbancario DIGICONECU
   switch:
-    url: ${APP_SWITCH_URL:http://34.172.224.240:9080}
-    network-url: ${APP_SWITCH_URL:http://34.172.224.240:9080}
+    url: ${APP_SWITCH_URL:http://35.208.155.21:9080}
+    network-url: ${APP_SWITCH_URL:http://35.208.155.21:9080}
   
   # Código del banco (para identificarse ante el switch)
   banco:
     codigo: ${BANCO_CODIGO:BANTEC}
+  
+  # Configuración de mTLS (Mutual TLS) para autenticación con el Switch
+  mtls:
+    enabled: ${MTLS_ENABLED:false}
+    keystore:
+      path: ${MTLS_KEYSTORE_PATH:classpath:certs/bantec-keystore.p12}
+      password: ${MTLS_KEYSTORE_PASSWORD:bantec123}
+    truststore:
+      path: ${MTLS_TRUSTSTORE_PATH:classpath:certs/bantec-truststore.p12}
+      password: ${MTLS_TRUSTSTORE_PASSWORD:bantec123}
 
 # --- CONFIGURACIÓN SWAGGER / OPENAPI ---
 springdoc:

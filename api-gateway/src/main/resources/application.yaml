@@ -13,17 +13,13 @@ spring:
             allowedOrigins:
               - "http://localhost:3000"
               - "http://localhost:3001"
-              - "http://34.41.171.65:3000"
-              - "http://34.41.171.65:3001"
-              - "http://107.178.215.37:4000"
-              - "http://107.178.215.37:4001"
-              - "http://frontend-web:80"
-              - "http://frontend-cajero:80"
+              # IP Externa VM Bantec
+              - "http://35.209.225.8:3000"
+              - "http://35.209.225.8:3001"
+              - "http://35.209.225.8"
               # HTTPS sslip.io domains
-              - "https://bantec.34-41-171-65.sslip.io"
-              - "https://bantec.34-41-171-65.sslip.io:8443"
-              - "https://arcbank.107-178-215-37.sslip.io"
-              - "https://arcbank.107-178-215-37.sslip.io:8443"
+              - "https://bantec.35-209-225-8.sslip.io"
+              - "https://bantec.35-209-225-8.sslip.io:8443"
             allowedMethods:
               - GET
               - POST
@@ -80,6 +76,20 @@ spring:
           uri: http://ms-transaccion:8080
           predicates:
             - Path=/api/bancos/**
+
+# Configuración de Swagger centralizado
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: Microservicio Clientes
+        url: http://micro-clientes:8080/v3/api-docs
+      - name: Microservicio Cuentas
+        url: http://micro-cuentas:8081/v3/api-docs
+      - name: Microservicio Transacciones
+        url: http://ms-transaccion:8080/v3/api-docs
+  api-docs:
+    enabled: true
 
 # Configuración para ver los logs de ruteo (útil para debug)
 logging:

@@ -1,11 +1,15 @@
 # Documentación del Proyecto BANTEC (Micros2P)
-**Fecha de Actualización**: 20 de Diciembre de 2025
+**Fecha de Actualización**: 26 de Diciembre de 2025  
 **Generado por**: AI (Antigravity) para continuidad de desarrollo.
 
 ## 1. Visión General
 Este es un sistema bancario distribuido basado en microservicios, diseñado para gestionar **Clientes**, **Cuentas de Ahorro**, y **Transacciones** (Depósitos, Retiros, Transferencias Internas e Interbancarias). Incluye dos aplicaciones frontend: una Web de Banca en Línea y un Cajero Automático (ATM).
 
 **Integración Interbancaria**: El sistema se conecta al switch **DIGICONECU** para procesar transferencias entre diferentes bancos.
+
+**Infraestructura**: Desplegado en Google Cloud Platform (VMs en us-central1-c)
+- **vmbantec**: `35.209.225.8` (IP Externa) - Microservicios BANTEC
+- **vmdigiconecu**: `35.208.155.21` (IP Externa) - Switch Interbancario
 
 ## 2. Arquitectura del Sistema
 El sistema utiliza **Docker Compose** para orquestar los siguientes servicios:
@@ -128,6 +132,69 @@ curl -X POST http://localhost:8082/api/transacciones \
   -H "Content-Type: application/json" \
   -d '{"tipoOperacion":"TRANSFERENCIA_SALIDA","idCuentaOrigen":1,"cuentaExterna":"1001234567","monto":50.00}'
 ```
+
+---
+
+## 8. Swagger Centralizado en API Gateway
+
+El proyecto ahora cuenta con **Swagger UI centralizado** en el API Gateway, permitiendo acceder a la documentación de todos los microservicios desde un solo punto.
+
+**Acceso a Swagger**:
+- **URL Local**: `http://localhost:8080/swagger-ui.html`
+- **URL Producción**: `http://35.209.225.8:8080/swagger-ui.html`
+
+**Microservicios Documentados**:
+1. **Microservicio Clientes**: `/v3/api-docs` (puerto 8080 interno)
+2. **Microservicio Cuentas**: `/v3/api-docs` (puerto 8081 interno)
+3. **Microservicio Transacciones**: `/v3/api-docs` (puerto 8080 interno)
+
+---
+
+## 9. Configuración de mTLS (Mutual TLS)
+
+Para comunicación segura con el Switch DIGICONECU, el proyecto soporta **autenticación mutua mediante certificados**.
+
+### Generar Certificados
+```bash
+# Ejecutar script de generación
+./generate-mtls-certs.sh
+```
+
+### Archivos Generados
+- `bantec.key`: Llave privada (NO compartir)
+- `bantec.crt`: Certificado público (enviar al Switch)
+- `bantec-keystore.p12`: Keystore para Spring Boot
+- `bantec-truststore.p12`: Truststore (agregar certificado del Switch)
+
+### Habilitar mTLS
+Configurar en `docker-compose.prod.yml`:
+```yaml
+ms-transaccion:
+  environment:
+    MTLS_ENABLED: "true"
+    MTLS_KEYSTORE_PASSWORD: "bantec123"
+    MTLS_TRUSTSTORE_PASSWORD: "bantec123"
+```
+
+### Agregar Certificado del Switch al Truststore
+```bash
+keytool -import -alias digiconecu -file switch.crt \
+  -keystore ms-transaccion/src/main/resources/certs/bantec-truststore.p12 \
+  -storepass bantec123
+```
+
+---
+
+## 10. Despliegue en Google Cloud
+
+Para instrucciones detalladas de despliegue en las VMs de Google Cloud, consultar:
+- **[GUIA_DESPLIEGUE_VM.md](GUIA_DESPLIEGUE_VM.md)**: Guía completa paso a paso
+
+**URLs de Producción**:
+- **Banca Web**: `https://bantec.35-209-225-8.sslip.io`
+- **Cajero ATM**: `https://bantec.35-209-225-8.sslip.io:8443`
+- **API Gateway**: `http://35.209.225.8:8080`
+- **Swagger UI**: `http://35.209.225.8:8080/swagger-ui.html`
 
 ---
 *Este documento fue generado para asegurar la continuidad del desarrollo del proyecto.*
