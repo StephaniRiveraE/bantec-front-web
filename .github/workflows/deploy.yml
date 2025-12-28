@@ -8,9 +8,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     
     steps:
-      - name: Deploy to VM via SSH
+      - name: SECRET_BANTEC
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
