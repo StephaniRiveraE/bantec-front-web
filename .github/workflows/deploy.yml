@@ -8,9 +8,15 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
+    environment: production 
     
     steps:
+      - name: Debug secrets
+        run: |
+          echo "SSH_HOST loaded -> ${{ secrets.SSH_HOST != '' }}"
+          echo "SSH_USER loaded -> ${{ secrets.SSH_USER != '' }}"
+          echo "SSH_PRIVATE_KEY loaded -> ${{ secrets.SSH_PRIVATE_KEY != '' }}"
+
       - name: SECRET_BANTEC
         uses: appleboy/ssh-action@v1.0.3
         with:
