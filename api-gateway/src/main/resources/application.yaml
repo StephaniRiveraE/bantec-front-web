@@ -14,12 +14,12 @@ spring:
               - "http://localhost:3000"
               - "http://localhost:3001"
               # IP Externa VM Bantec
-              - "http://35.209.225.8:3000"
-              - "http://35.209.225.8:3001"
-              - "http://35.209.225.8"
+              - "http://35.209.79.193:3000"
+              - "http://35.209.79.193:3001"
+              - "http://35.209.79.193"
               # HTTPS sslip.io domains
-              - "https://bantec.35-209-225-8.sslip.io"
-              - "https://bantec.35-209-225-8.sslip.io:8443"
+              - "https://bantec.35-209-79-193.sslip.io"
+              - "https://bantec.35-209-79-193.sslip.io:8443"
             allowedMethods:
               - GET
               - POST
