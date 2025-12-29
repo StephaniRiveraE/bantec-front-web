@@ -8,8 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production 
-    
+    environment: production
+
     steps:
       - name: Debug secrets
         run: |
@@ -24,36 +24,36 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          command_timeout: 30m
+          command_timeout: 60m
           script: |
-            # Ensure swap exists for memory-intensive builds
+            # --- Ensure swap exists for memory-intensive builds ---
             if [ ! -f /swapfile ]; then
               sudo fallocate -l 2G /swapfile
               sudo chmod 600 /swapfile
               sudo mkswap /swapfile
               sudo swapon /swapfile
             fi
-            
-            # Setup project directory
+
+            # --- Setup project directory ---
             if [ ! -d ~/BnacoBantec ]; then
               cd ~
               git clone https://github.com/AlisonTamayo/BnacoBantec.git
             fi
-            
+
             cd ~/BnacoBantec
             git fetch origin main
             git reset --hard origin/main
-            
-            # Prepare SSL/mTLS Certificates
+
+            # --- Prepare SSL/mTLS Certificates ---
             echo "🔐 Verificando certificados..."
-            
+
             # 1. mTLS (Banco <-> Switch)
             if [ ! -f ~/BnacoBantec/ms-transaccion/src/main/resources/certs/bantec-keystore.p12 ]; then
               echo "📝 Generando certificados mTLS por defecto..."
               chmod +x ~/BnacoBantec/generate-mtls-certs.sh
               ~/BnacoBantec/generate-mtls-certs.sh
             fi
-            
+
             # 2. Nginx SSL (HTTPS)
             mkdir -p ~/BnacoBantec/nginx/certs
             if [ ! -f ~/BnacoBantec/nginx/certs/fullchain.pem ]; then
@@ -63,15 +63,16 @@ jobs:
                 -out ~/BnacoBantec/nginx/certs/fullchain.pem \
                 -subj "/C=EC/ST=Pichincha/L=Quito/O=Bantec/CN=35.209.225.8"
             fi
-            
-            # Build and deploy using docker-compose
+
+            # --- Build and deploy using docker-compose ---
+            echo "🚀 Construyendo y desplegando contenedores..."
             sudo docker-compose -f docker-compose.prod.yml build --no-cache
             sudo docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
-            
-            # Clean up unused Docker resources to save disk space
+
+            # --- Clean up unused Docker resources ---
             sudo docker image prune -f
-            
-            # Ensure nginx is restarted with new config
+
+            # --- Ensure nginx is restarted with new config ---
             sudo docker restart nginx-proxy-bantec || true
-            
+
             echo "✅ BANTEC Deploy completado: $(date)"
