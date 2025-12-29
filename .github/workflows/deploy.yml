@@ -1,4 +1,4 @@
-name: Deploy BANTEC to GCP
+name: Deploy ARCBANK to GCP
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production 
+    environment: production
     
     steps:
       - name: Debug secrets
@@ -17,61 +17,73 @@ jobs:
           echo "SSH_USER loaded -> ${{ secrets.SSH_USER != '' }}"
           echo "SSH_PRIVATE_KEY loaded -> ${{ secrets.SSH_PRIVATE_KEY != '' }}"
 
-      - name: SECRET_BANTEC
+      - name: Deploy ARCBANK via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          command_timeout: 30m
+          command_timeout: 40m
           script: |
-            # Ensure swap exists for memory-intensive builds
+            echo "📌 Inicio de deploy ARCBANK: $(date)"
+
+            # Crear swap si no existe
             if [ ! -f /swapfile ]; then
+              echo "📝 Creando swap de 2GB..."
               sudo fallocate -l 2G /swapfile
               sudo chmod 600 /swapfile
               sudo mkswap /swapfile
               sudo swapon /swapfile
             fi
-            
-            # Setup project directory
-            if [ ! -d ~/BnacoBantec ]; then
+
+            # Clonar o actualizar repositorio
+            if [ ! -d ~/BancoArcbank ]; then
+              echo "📥 Clonando repositorio ARCBANK..."
               cd ~
-              git clone https://github.com/AlisonTamayo/BnacoBantec.git
+              git clone https://github.com/AlisonTamayo/BancoArcbank.git
             fi
-            
-            cd ~/BnacoBantec
+
+            cd ~/BancoArcbank
+            echo "🔄 Actualizando código desde main..."
             git fetch origin main
             git reset --hard origin/main
-            
-            # Prepare SSL/mTLS Certificates
+            git config --global --add safe.directory "*"
+
+            # Preparar certificados
             echo "🔐 Verificando certificados..."
-            
-            # 1. mTLS (Banco <-> Switch)
-            if [ ! -f ~/BnacoBantec/ms-transaccion/src/main/resources/certs/bantec-keystore.p12 ]; then
+
+            # mTLS para comunicación microservices
+            if [ ! -f ~/BancoArcbank/ms-transaccion/src/main/resources/certs/arcbank-keystore.p12 ]; then
               echo "📝 Generando certificados mTLS por defecto..."
-              chmod +x ~/BnacoBantec/generate-mtls-certs.sh
-              ~/BnacoBantec/generate-mtls-certs.sh
+              chmod +x ~/BancoArcbank/generate-mtls-certs.sh
+              ~/BancoArcbank/generate-mtls-certs.sh
             fi
-            
-            # 2. Nginx SSL (HTTPS)
-            mkdir -p ~/BnacoBantec/nginx/certs
-            if [ ! -f ~/BnacoBantec/nginx/certs/fullchain.pem ]; then
+
+            # Certificados SSL para Nginx
+            mkdir -p ~/BancoArcbank/nginx/certs
+            if [ ! -f ~/BancoArcbank/nginx/certs/fullchain.pem ]; then
               echo "📝 Generando certificados SSL autofirmados para Nginx..."
               openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-                -keyout ~/BnacoBantec/nginx/certs/privkey.pem \
-                -out ~/BnacoBantec/nginx/certs/fullchain.pem \
-                -subj "/C=EC/ST=Pichincha/L=Quito/O=Bantec/CN=35.209.225.8"
+                -keyout ~/BancoArcbank/nginx/certs/privkey.pem \
+                -out ~/BancoArcbank/nginx/certs/fullchain.pem \
+                -subj "/C=EC/ST=Pichincha/L=Quito/O=Arcbank/CN=35.208.155.21"
             fi
-            
-            # Build and deploy using docker-compose
+
+            # Limpiar Docker antes del build
+            echo "🧹 Limpiando imágenes y contenedores antiguos..."
+            sudo docker system prune -f
+
+            # Construir y levantar con docker-compose (producción)
+            echo "🚀 Construyendo y desplegando Docker Compose..."
             sudo docker-compose -f docker-compose.prod.yml build --no-cache
             sudo docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
-            
-            # Clean up unused Docker resources to save disk space
-            sudo docker image prune -f
-            
-            # Ensure nginx is restarted with new config
-            sudo docker restart nginx-proxy-bantec || true
-            
-            echo "✅ BANTEC Deploy completado: $(date)"
+
+            # Reiniciar Nginx Proxy para aplicar certificados y configs
+            echo "🔄 Reiniciando Proxy Nginx..."
+            sudo docker restart nginx-proxy-arcbank || true
+
+            # Mostrar estado final de contenedores
+            sudo docker ps
+
+            echo "✅ Deploy ARCBANK completado: $(date)"
