@@ -40,6 +40,7 @@ app:
   # Configuración del Switch Interbancario DIGICONECU
   switch:
     url: ${APP_SWITCH_URL:http://35.208.155.21:9080}
+    apikey: ${APP_SWITCH_APIKEY:}
     network-url: ${APP_SWITCH_URL:http://35.208.155.21:9080}
   
   # Código del banco (para identificarse ante el switch)

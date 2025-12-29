@@ -181,7 +181,8 @@ services:
       # Apuntamos a la raíz, Feign añade /api/v2/transfers
       APP_SWITCH_URL: http://10.128.0.8:8000
       BANCO_CODIGO: BANTEC
-      MTLS_ENABLED: ${MTLS_ENABLED:-false}
+      APP_SWITCH_APIKEY: BANTEC_SECRET_KEY_2025
+      MTLS_ENABLED: ${MTLS_ENABLED:-true}
       MTLS_KEYSTORE_PASSWORD: ${MTLS_KEYSTORE_PASSWORD:-bantec123}
       MTLS_TRUSTSTORE_PASSWORD: ${MTLS_TRUSTSTORE_PASSWORD:-bantec123}
     ports:

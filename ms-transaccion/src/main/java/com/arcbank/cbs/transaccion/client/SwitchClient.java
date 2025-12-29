@@ -17,7 +17,7 @@ import com.arcbank.cbs.transaccion.dto.SwitchTransferResponse;
  * 
  * URL configurable via: app.switch.url (default: http://localhost:8081)
  */
-@FeignClient(name = "digiconecu-switch", url = "${app.switch.url:http://localhost:8081}")
+@FeignClient(name = "digiconecu-switch", url = "${app.switch.url:http://localhost:8081}", configuration = com.arcbank.cbs.transaccion.config.SwitchFeignConfig.class)
 public interface SwitchClient {
 
     /**
