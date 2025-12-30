@@ -1,7 +1,7 @@
 version: '3.8'
 
 networks:
-  arcbank-net:
+  bantec-net:
     driver: bridge
   switch-transaccional-network:
     external: true
@@ -15,7 +15,7 @@ services:
     build:
       context: ./api-gateway
       dockerfile: Dockerfile
-    container_name: api-gateway-arcbank
+    container_name: api-gateway-bantec
     ports:
       - "8080:8080" # Entrada principal del sistema
     depends_on:
@@ -23,14 +23,14 @@ services:
       - micro-cuentas
       - ms-transaccion
     networks:
-      - arcbank-net
+      - bantec-net
 
   # ==========================================
   # 1. MICROSERVICIO CUENTAS (Puerto 8081)
   # ==========================================
   db-cuentas:
     image: postgres:17
-    container_name: db-cuentas-arcbank
+    container_name: db-cuentas-bantec
     ports:
       - "5432:5432"
     environment:
@@ -41,7 +41,7 @@ services:
       - postgres_data_cuentas:/var/lib/postgresql/data
     restart: always
     networks:
-      - arcbank-net
+      - bantec-net
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
@@ -52,7 +52,7 @@ services:
     build:
       context: ./micro-cuentas
       dockerfile: Dockerfile
-    container_name: micro-cuentas
+    container_name: micro-cuentas-bantec
     ports:
       - "8081:8081" # Acceso directo (backup)
     environment:
@@ -65,14 +65,14 @@ services:
       db-cuentas:
         condition: service_healthy
     networks:
-      - arcbank-net
+      - bantec-net
 
   # ==========================================
   # 2. MICROSERVICIO CLIENTES (Puerto 8083)
   # ==========================================
   db-clientes:
     image: postgres:17
-    container_name: db-clientes-arcbank
+    container_name: db-clientes-bantec
     ports:
       - "5433:5432"
     environment:
@@ -83,7 +83,7 @@ services:
       - postgres_data_clientes:/var/lib/postgresql/data
     restart: always
     networks:
-      - arcbank-net
+      - bantec-net
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
@@ -94,7 +94,7 @@ services:
     build:
       context: ./micro-clientes
       dockerfile: Dockerfile
-    container_name: micro-clientes-arcbank
+    container_name: micro-clientes-bantec
     ports:
       - "8083:8080" # CAMBIO: Puerto externo movido al 8083
     environment:
@@ -109,14 +109,14 @@ services:
       db-clientes:
         condition: service_healthy
     networks:
-      - arcbank-net
+      - bantec-net
 
   # ==========================================
   # 3. MICROSERVICIO TRANSACCIONES (Puerto 8082)
   # ==========================================
   db-transacciones:
     image: postgres:15-alpine
-    container_name: db-transacciones-arcbank
+    container_name: db-transacciones-bantec
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
@@ -127,7 +127,7 @@ services:
       - postgres_data_transacciones:/var/lib/postgresql/data
       - ./ms-transaccion/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      - arcbank-net
+      - bantec-net
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
@@ -138,7 +138,7 @@ services:
     build:
       context: ./ms-transaccion
       dockerfile: Dockerfile
-    container_name: ms-transaccion-arcbank
+    container_name: ms-transaccion-bantec
     depends_on:
       db-transacciones:
         condition: service_healthy
@@ -154,7 +154,7 @@ services:
     ports:
       - "8082:8080" # Acceso directo (backup)
     networks:
-      - arcbank-net
+      - bantec-net
       - switch-transaccional-network
 
   # ==========================================
@@ -164,7 +164,7 @@ services:
     build:
       context: ./frontendWeb
       dockerfile: Dockerfile
-    container_name: frontend-web-arcbank
+    container_name: frontend-web-bantec
     ports:
       - "3000:80"
     environment:
@@ -172,7 +172,7 @@ services:
     depends_on:
       - api-gateway
     networks:
-      - arcbank-net
+      - bantec-net
 
   # ==========================================
   # 5. FRONTEND CAJERO (Puerto 3001)
@@ -181,7 +181,7 @@ services:
     build:
       context: ./frontendCajero
       dockerfile: Dockerfile
-    container_name: frontend-cajero-arcbank
+    container_name: frontend-cajero-bantec
     ports:
       - "3001:80"
     environment:
@@ -189,7 +189,7 @@ services:
     depends_on:
       - api-gateway
     networks:
-      - arcbank-net
+      - bantec-net
 
 volumes:
   postgres_data_cuentas:
