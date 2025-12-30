@@ -106,6 +106,15 @@ export default function TransaccionesInterbancarias() {
 
             await realizarTransferenciaInterbancaria(request);
 
+
+            addTransaction({
+                accId: fromAccId,
+                amount: -Number(amount),
+                tipo: 'TRANSFERENCIA_SALIDA',
+                desc: `Transferencia a ${toName} (${bankBic})`,
+                fecha: new Date().toISOString()
+            });
+
             // Éxito
             setStep(4);
 

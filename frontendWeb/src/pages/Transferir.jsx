@@ -4,7 +4,7 @@ import { realizarTransferencia, getCuentaPorNumero } from '../services/bancaApi'
 import { useNavigate } from "react-router-dom";
 
 export default function Transfer() {
-    const { state } = useAuth();
+    const { state, addTransaction } = useAuth();
     const navigate = useNavigate();
 
     // 1. Cargar cuentas origen del usuario
@@ -94,6 +94,25 @@ export default function Transfer() {
             }
 
             await realizarTransferencia(request);
+
+            addTransaction({
+                accId: fromAccId,
+                amount: -Number(amount),
+                tipo: 'TRANSFERENCIA_INTERNA',
+                desc: `Transferencia a ${toName}`,
+                fecha: new Date().toISOString()
+            });
+
+            const isOwnAccount = accounts.some(a => String(a.id) === String(destAccountObj.idCuenta));
+            if (isOwnAccount) {
+                addTransaction({
+                    accId: String(destAccountObj.idCuenta),
+                    amount: Number(amount),
+                    tipo: 'TRANSFERENCIA_ENTRANTE',
+                    desc: `Transferencia recibida de ${fromAccount.number}`,
+                    fecha: new Date().toISOString()
+                });
+            }
 
             setStep(4);
             setTimeout(() => { navigate('/movimientos'); }, 3000);

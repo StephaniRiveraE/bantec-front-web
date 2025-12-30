@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { getMovimientos } from '../services/bancaApi'
+import { getMovimientos, getConsolidada } from '../services/bancaApi'
 import './Movimientos.css'
 
 export default function Movimientos() {
-  const { state } = useAuth()
+  const { state, setUserAccounts } = useAuth()
 
   // Estado de cuenta seleccionada (Guardamos el ID para el backend)
   const [selectedAccId, setSelectedAccId] = useState('')
@@ -31,7 +31,23 @@ export default function Movimientos() {
 
     setLoading(true)
     try {
-      const resp = await getMovimientos(selectedAccId)
+      // 1. Cargar movimientos y cuentas en paralelo para actualizar saldo
+      const [resp, cuentasRaw] = await Promise.all([
+        getMovimientos(selectedAccId),
+        state.user.identificacion ? getConsolidada(state.user.identificacion) : Promise.resolve([])
+      ])
+
+      // 2. Si recibimos cuentas actualizadas, refrescamos el estado global (balance)
+      if (cuentasRaw && cuentasRaw.length > 0) {
+        const mapped = cuentasRaw.map(c => ({
+          id: String(c.idCuenta),
+          number: c.numeroCuenta,
+          type: c.idTipoCuenta === 1 ? "Ahorros" : "Corriente",
+          balance: Number(c.saldoDisponible || c.saldoActual || 0)
+        }))
+        setUserAccounts(mapped)
+      }
+
       console.log('Movimientos recibidos:', resp)
 
       // Mapeo de respuesta DTO -> Vista
