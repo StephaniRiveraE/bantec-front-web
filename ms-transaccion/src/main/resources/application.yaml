@@ -32,8 +32,8 @@ spring:
 
 app:
   feign:
-    
     cuentas-url: ${CUENTAS_URL:http://localhost:8081}
+    clientes-url: ${CLIENTES_URL:http://localhost:8080}
 
   switch:
     url: ${APP_SWITCH_URL:https://switch-interbank.ddns.net}

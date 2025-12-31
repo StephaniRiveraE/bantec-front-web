@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 /**
  * Cliente Feign para comunicación con micro-clientes
  */
-@FeignClient(name = "ms-clientes", url = "${app.feign.clientes-url:http://localhost:8082}")
+@FeignClient(name = "ms-clientes", url = "${app.feign.clientes-url:http://micro-clientes:8080}")
 public interface ClienteClient {
 
     @GetMapping("/api/v1/clientes/{id}")

@@ -199,11 +199,12 @@ public class TransaccionServiceImpl implements TransaccionService {
                         SwitchTransferResponse switchResp = switchClient.enviarTransferencia(switchRequest);
 
                         if (!switchResp.isSuccess()) {
-                            log.warn("Switch rechazó transferencia, revirtiendo débito local");
+                            log.warn("Switch rechazó transferencia. Response: {}", switchResp);
                             procesarSaldo(trx.getIdCuentaOrigen(), request.getMonto());
-                            String errorMsg = switchResp.getError() != null
-                                    ? switchResp.getError().getMessage()
-                                    : "Error desconocido del switch";
+                            String errorMsg = (switchResp.getError() != null
+                                    && switchResp.getError().getMessage() != null)
+                                            ? switchResp.getError().getMessage()
+                                            : "Error desconocido o sin mensaje del switch";
                             throw new BusinessException("Switch rechazó: " + errorMsg);
                         }
 

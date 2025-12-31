@@ -177,6 +177,7 @@ services:
       DB_PASS: admin
       SERVER_PORT: 8080
       CUENTAS_URL: http://micro-cuentas:8081
+      CLIENTES_URL: http://micro-clientes:8080
       # Switch Interbancario (IP Interna 10.128.0.8)
       # Apuntamos a la raíz, Feign añade /api/v2/transfers
       APP_SWITCH_URL: https://switch-interbank.ddns.net
