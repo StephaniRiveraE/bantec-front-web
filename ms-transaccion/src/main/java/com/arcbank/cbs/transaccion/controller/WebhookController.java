@@ -25,26 +25,22 @@ public class WebhookController {
 
         @PostMapping
         public ResponseEntity<?> recibirTransferenciaEntrante(@RequestBody SwitchTransferRequest request) {
-                log.info("Webhook recibido (ISO 20022): {}", request);
+                log.info("📥 Webhook recibido en Bantec (ISO 20022): {}", request);
 
                 try {
                         if (request.getHeader() == null || request.getBody() == null) {
                                 return ResponseEntity.badRequest().body(Map.of(
                                                 "status", "NACK",
-                                                "error", "Formato de mensaje inválido"));
+                                                "error", "Formato inválido"));
                         }
 
                         String instructionId = request.getBody().getInstructionId();
-
-                        String cuentaDestino = null;
-                        if (request.getBody().getCreditor() != null) {
-                                cuentaDestino = request.getBody().getCreditor().getAccountId();
-                        }
-
-                        String bancoOrigen = "DESCONOCIDO";
-                        if (request.getHeader().getOriginatingBankId() != null) {
-                                bancoOrigen = request.getHeader().getOriginatingBankId();
-                        }
+                        String cuentaDestino = request.getBody().getCreditor() != null
+                                        ? request.getBody().getCreditor().getAccountId()
+                                        : null;
+                        String bancoOrigen = request.getHeader().getOriginatingBankId() != null
+                                        ? request.getHeader().getOriginatingBankId()
+                                        : "DESCONOCIDO";
 
                         BigDecimal monto = BigDecimal.ZERO;
                         if (request.getBody().getAmount() != null && request.getBody().getAmount().getValue() != null) {
@@ -52,24 +48,27 @@ public class WebhookController {
                         }
 
                         if (instructionId == null || cuentaDestino == null || monto.compareTo(BigDecimal.ZERO) <= 0) {
+                                log.warn("⚠️ Datos incompletos en el webhook: id={}, cuenta={}, monto={}",
+                                                instructionId, cuentaDestino, monto);
                                 return ResponseEntity.badRequest().body(Map.of(
                                                 "status", "NACK",
-                                                "error", "Datos críticos faltantes"));
+                                                "error", "Datos incompletos"));
                         }
 
-                        log.info("Simulando acreditación para cuenta: {}, monto: {}, desde: {}", cuentaDestino, monto,
+                        log.info("💰 Solicitud de abono en Bantec: Cta {} | Monto {} | Desde {}", cuentaDestino, monto,
                                         bancoOrigen);
 
+                        // Ejecutar acreditación
                         transaccionService.procesarTransferenciaEntrante(instructionId, cuentaDestino, monto,
                                         bancoOrigen);
 
                         return ResponseEntity.ok(Map.of(
                                         "status", "ACK",
-                                        "message", "Transferencia procesada exitosamente",
+                                        "message", "Acreditación exitosa en Bantec",
                                         "instructionId", instructionId));
 
                 } catch (Exception e) {
-                        log.error("Error procesando webhook: {}", e.getMessage());
+                        log.error("❌ Error procesando abono en Bantec: {}", e.getMessage());
                         return ResponseEntity.status(422).body(Map.of(
                                         "status", "NACK",
                                         "error", e.getMessage()));

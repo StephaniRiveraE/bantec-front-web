@@ -1,10 +1,11 @@
 package com.arcbank.cbs.transaccion.config;
 
 import feign.Client;
+import feign.RequestInterceptor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
-import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
 import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,10 +17,10 @@ import javax.net.ssl.SSLContext;
 import java.io.InputStream;
 import java.security.KeyStore;
 
-import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 
-@Slf4j
 @Configuration
+@Slf4j
 public class MTLSConfig {
 
     @Value("${app.mtls.keystore.path:classpath:certs/bantec-keystore.p12}")
@@ -37,13 +38,32 @@ public class MTLSConfig {
     @Value("${app.mtls.enabled:false}")
     private boolean mtlsEnabled;
 
+    @Value("${app.switch.apikey:}")
+    private String apiKey;
+
+    @Bean
+    public RequestInterceptor requestInterceptor() {
+        return requestTemplate -> {
+            if (apiKey != null && !apiKey.isBlank()) {
+                requestTemplate.header("apikey", apiKey);
+            }
+        };
+    }
+
     @Bean
     public Client feignClient() throws Exception {
         if (!mtlsEnabled) {
-
+            log.info("mTLS desactivado para el cliente Feign.");
             return new Client.Default(null, null);
         }
 
+        if (!keystoreResource.exists()) {
+            log.error("❌ CRÍTICO: Keystore NO encontrado en {}. La conexión con el Switch fallará si requiere mTLS.",
+                    keystoreResource);
+            return new Client.Default(null, null);
+        }
+
+        log.info("Cargando Keystore desde: {}", keystoreResource);
         KeyStore keyStore = KeyStore.getInstance("PKCS12");
         try (InputStream keyStoreStream = keystoreResource.getInputStream()) {
             keyStore.load(keyStoreStream, keystorePassword.toCharArray());
@@ -51,16 +71,16 @@ public class MTLSConfig {
 
         KeyStore trustStore = KeyStore.getInstance("PKCS12");
         boolean trustStoreLoaded = false;
-        try (InputStream trustStoreStream = truststoreResource.getInputStream()) {
-            trustStore.load(trustStoreStream, truststorePassword.toCharArray());
-            if (trustStore.size() > 0) {
+        if (truststoreResource.exists()) {
+            try (InputStream trustStoreStream = truststoreResource.getInputStream()) {
+                trustStore.load(trustStoreStream, truststorePassword.toCharArray());
                 trustStoreLoaded = true;
-            } else {
-                log.warn("El truststore {} está vacío. Se usará el truststore del sistema.", truststoreResource);
+                log.info("✅ Truststore cargado exitosamente desde {}", truststoreResource);
+            } catch (Exception e) {
+                log.warn("⚠️ Error cargando truststore personalizado: {}. Se usará el del sistema.", e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("No se pudo cargar el truststore {}: {}. Se usará el truststore del sistema.", truststoreResource,
-                    e.getMessage());
+        } else {
+            log.warn("ℹ️ Truststore personalizado no encontrado en {}. Se usará el del sistema.", truststoreResource);
         }
 
         SSLContextBuilder sslContextBuilder = SSLContextBuilder.create()
@@ -69,11 +89,10 @@ public class MTLSConfig {
         if (trustStoreLoaded) {
             sslContextBuilder.loadTrustMaterial(trustStore, null);
         } else {
-            // Si no hay truststore personalizado o está vacío, cargamos el por defecto del
-            // sistema
+            // Cargar CAs del sistema si no hay truststore personalizado
             sslContextBuilder.loadTrustMaterial((java.security.KeyStore) null,
                     (org.apache.hc.core5.ssl.TrustStrategy) null);
-            // Nota: .loadTrustMaterial(null, null) carga las CAs del sistema (trustAnchors)
+            log.info("Using system default truststore.");
         }
 
         SSLContext sslContext = sslContextBuilder.build();
@@ -87,6 +106,7 @@ public class MTLSConfig {
                 .setConnectionManager(connectionManager)
                 .build();
 
+        log.info("🚀 Cliente Feign mTLS configurado correctamente para BTEC -> SWITCH.");
         return new feign.hc5.ApacheHttp5Client(httpClient);
     }
 }

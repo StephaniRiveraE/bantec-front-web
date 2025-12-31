@@ -31,17 +31,17 @@ export default function TransaccionesInterbancarias() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    // Ajustamos la lista de bancos para que coincida con la lógica de Arcbank
     const BANCOS_REGISTRADOS = [
-        { id: 'NEXUS_BANK', nombre: 'NEXUS_BANK', codigo: 'NEXUS_BANK', bin: '270100' },
-        { id: 'ECUSOL_BK', nombre: 'ECUSOL_BK', codigo: 'ECUSOL_BK', bin: '370100' },
-        { id: 'ARCBANK', nombre: 'ARCBANK', codigo: 'ARCBANK', bin: '400000' },
-        { id: 'BANTEC', nombre: 'BANTEC', codigo: 'BANTEC', bin: '100000' },
+        { id: 'NEXUS_BANK', nombre: 'Nexus Bank', codigo: 'NEXUS_BANK', bin: '270100' },
+        { id: 'ECUSOL_BK', nombre: 'Ecusol Bank', codigo: 'ECUSOL_BK', bin: '370100' },
+        { id: 'ARCBANK', nombre: 'Arcbank', codigo: 'ARCBANK', bin: '400000' },
+        { id: 'BANTEC', nombre: 'Bantec', codigo: 'BANTEC', bin: '100000' },
     ];
 
     useEffect(() => {
         setBanks(BANCOS_REGISTRADOS);
 
-        // Si cambia la lista de cuentas y no hay seleccionada, seleccionar la primera
         if (accounts.length > 0 && !fromAccId) {
             setFromAccId(accounts[0].id)
         }
@@ -51,7 +51,6 @@ export default function TransaccionesInterbancarias() {
         if (!toAccount || !bankBic || !toName)
             return setError("Todos los campos son obligatorios.");
 
-        // Validation: Only numbers (The input already enforces this via replace, but double check)
         if (!/^\d+$/.test(toAccount))
             return setError("El número de cuenta solo debe contener números.");
 
@@ -66,7 +65,6 @@ export default function TransaccionesInterbancarias() {
         const num = Number(amount);
         if (!num || num <= 0) return setError("Monto inválido.");
 
-        // Validación de saldo (Opcional, el backend valida también)
         if (num > (fromAccount.balance || 0))
             return setError("Saldo insuficiente en la cuenta.");
 
@@ -75,8 +73,6 @@ export default function TransaccionesInterbancarias() {
     };
 
     const confirmTransfer = async () => {
-        // En tu backend Java no usas idUsuarioWeb en el DTO de TransaccionRequest, 
-        // usas idCuentaOrigen. El backend sabe de quién es la cuenta por el ID.
         if (!fromAccId) {
             return setError('Seleccione una cuenta de origen válida.');
         }
@@ -85,23 +81,16 @@ export default function TransaccionesInterbancarias() {
         setError("");
 
         try {
-            const selectedBank = banks.find(b => (b.codigo || b.id) === bankBic);
-
             const request = {
                 tipoOperacion: "TRANSFERENCIA_SALIDA",
-                idCuentaOrigen: Number(fromAccId), // Integer ID interno
-                cuentaExterna: toAccount,  // Cuenta destino en otro banco
-                idBancoExterno: bankBic,     // Enviamos el BIC (ej: ARCBANK)
-                bancoDestino: bankBic,       // Mantenemos bancoDestino por compatibilidad
+                idCuentaOrigen: Number(fromAccId),
+                cuentaExterna: toAccount,
+                idBancoExterno: bankBic, // BIC correcto (ej: ARCBANK)
                 beneficiario: toName,
                 monto: Number(amount),
                 canal: "WEB",
-                descripcion: `Transferencia a ${toName} (${bankBic})`
+                descripcion: `Transferencia a ${toName} - Banco ${bankBic}`
             }
-
-            // Nota: Si tu backend ms-transaccion actual NO soporta transferencias externas (campos bancoDestino/cuentaExterna),
-            // esto fallará o requerirá que actualices el DTO Java.
-            // Asumiremos que el método realizarTransferenciaInterbancaria maneja la lógica.
 
             await realizarTransferenciaInterbancaria(request);
 
@@ -151,8 +140,8 @@ export default function TransaccionesInterbancarias() {
 
     // Helper to find bank name for display
     const getBankName = (bic) => {
-        const b = banks.find(x => x.id === bic);
-        return b ? b.name : bic;
+        const b = banks.find(x => x.id === bic || x.codigo === bic);
+        return b ? b.nombre : bic;
     };
 
     return (

@@ -25,7 +25,6 @@ public class TransaccionRequestDTO {
 
     private String cuentaExterna;
     private String idBancoExterno;
-    private String bancoDestino;
     private Integer idTransaccionReversa;
 
     @NotNull(message = "El monto es obligatorio")

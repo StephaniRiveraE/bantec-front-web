@@ -1,25 +1,14 @@
-server:
-  port: ${SERVER_PORT:8080}
-
 spring:
   application:
     name: ms-transaccion
-
   datasource:
-    
     url: ${DB_URL:jdbc:postgresql://localhost:5432/db_transacciones}
     username: ${DB_USER:postgres}
     password: ${DB_PASS:admin}
     driver-class-name: org.postgresql.Driver
-
-  mvc:
-    pathmatch:
-      matching-strategy: ant_path_matcher
-
   jpa:
     hibernate:
       ddl-auto: update
-      
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     show-sql: true
@@ -27,24 +16,21 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
-    open-in-view: false
 
+server:
+  port: ${SERVER_PORT:8080}
 
 app:
   feign:
-    cuentas-url: ${CUENTAS_URL:http://localhost:8081}
-    clientes-url: ${CLIENTES_URL:http://localhost:8080}
-
+    cuentas-url: ${CUENTAS_URL:http://micro-cuentas:8081}
+    clientes-url: ${CLIENTES_URL:http://micro-clientes:8080}
   switch:
-    url: ${APP_SWITCH_URL:https://switch-interbank.ddns.net}
-    apikey: ${APP_SWITCH_APIKEY:}
     network-url: ${APP_SWITCH_URL:https://switch-interbank.ddns.net}
-
+    apikey: ${APP_SWITCH_APIKEY:BANTEC_SECRET_KEY_2025}
   banco:
     codigo: ${BANCO_CODIGO:BANTEC}
-
   mtls:
-    enabled: ${MTLS_ENABLED:false}
+    enabled: ${MTLS_ENABLED:true}
     keystore:
       path: ${MTLS_KEYSTORE_PATH:classpath:certs/bantec-keystore.p12}
       password: ${MTLS_KEYSTORE_PASSWORD:bantec123}
@@ -52,18 +38,8 @@ app:
       path: ${MTLS_TRUSTSTORE_PATH:classpath:certs/bantec-truststore.p12}
       password: ${MTLS_TRUSTSTORE_PASSWORD:bantec123}
 
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-    disable-swagger-default-url: true
-
-    operations-sorter: method
-
 logging:
   level:
     com.arcbank.cbs.transaccion: DEBUG
     org.springframework.web: INFO
-
     com.arcbank.cbs.transaccion.client: DEBUG

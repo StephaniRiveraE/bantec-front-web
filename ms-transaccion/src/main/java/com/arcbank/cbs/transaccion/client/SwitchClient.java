@@ -12,37 +12,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import com.arcbank.cbs.transaccion.dto.SwitchTransferRequest;
 import com.arcbank.cbs.transaccion.dto.SwitchTransferResponse;
 
-/**
- * Cliente Feign para comunicación con el Switch DIGICONECU
- * 
- * URL configurable via: app.switch.url (default: http://localhost:8081)
- */
-@FeignClient(name = "digiconecu-switch", url = "${app.switch.url:http://localhost:8081}", configuration = com.arcbank.cbs.transaccion.config.SwitchFeignConfig.class)
+@FeignClient(name = "digiconecu-switch", url = "${app.switch.network-url:https://switch-interbank.ddns.net}", configuration = com.arcbank.cbs.transaccion.config.MTLSConfig.class)
 public interface SwitchClient {
 
-    /**
-     * Enviar una transferencia interbancaria al switch
-     * POST /api/v2/transfers
-     */
     @PostMapping("/api/v1/transacciones")
     SwitchTransferResponse enviarTransferencia(@RequestBody SwitchTransferRequest request);
 
-    /**
-     * Consultar el estado de una transferencia
-     */
-    @GetMapping("/api/switch/v1/transfers/{instructionId}")
-    SwitchTransferResponse consultarEstado(@PathVariable("instructionId") String instructionId);
-
-    /**
-     * Obtener lista de bancos conectados al switch
-     */
     @GetMapping("/api/v1/red/bancos")
     List<Map<String, Object>> obtenerBancos();
 
-    /**
-     * Health check del switch
-     * GET /api/v2/transfers/health
-     */
     @GetMapping("/api/v2/transfers/health")
     Map<String, String> healthCheck();
 }

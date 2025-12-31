@@ -179,15 +179,18 @@ services:
       CUENTAS_URL: http://micro-cuentas:8081
       CLIENTES_URL: http://micro-clientes:8080
       # Switch Interbancario (IP Interna 10.128.0.8)
-      # Apuntamos a la raíz, Feign añade /api/v2/transfers
       APP_SWITCH_URL: https://switch-interbank.ddns.net
       BANCO_CODIGO: BANTEC
       APP_SWITCH_APIKEY: BANTEC_SECRET_KEY_2025
       MTLS_ENABLED: ${MTLS_ENABLED:-true}
+      MTLS_KEYSTORE_PATH: file:/app/certs/bantec-keystore.p12
       MTLS_KEYSTORE_PASSWORD: ${MTLS_KEYSTORE_PASSWORD:-bantec123}
+      MTLS_TRUSTSTORE_PATH: file:/app/certs/bantec-truststore.p12
       MTLS_TRUSTSTORE_PASSWORD: ${MTLS_TRUSTSTORE_PASSWORD:-bantec123}
     ports:
       - "8082:8080"
+    volumes:
+      - ~/bantec_certs:/app/certs:ro
     networks:
       - bantec-prod-net
 

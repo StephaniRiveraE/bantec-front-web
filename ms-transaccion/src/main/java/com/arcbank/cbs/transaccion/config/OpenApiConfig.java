@@ -20,7 +20,6 @@ public class OpenApiConfig {
 
     @Bean
     public OpenAPI myOpenAPI() {
-
         Server localServer = new Server();
         localServer.setUrl("http://localhost:" + serverPort);
         localServer.setDescription("Servidor Local (Desarrollo)");

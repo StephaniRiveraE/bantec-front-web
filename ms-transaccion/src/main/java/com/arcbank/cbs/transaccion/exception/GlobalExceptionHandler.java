@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.servlet.resource.NoResourceFoundException; // Importante para Spring Boot 3.2+
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDateTime;
 
@@ -15,7 +15,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
-        log.warn("Error de negocio: {}", ex.getMessage()); // Warn es mejor que Error para negocio
+        log.warn("Error de negocio: {}", ex.getMessage());
         ErrorResponse error = ErrorResponse.builder()
                 .mensaje(ex.getMessage())
                 .codigo("BUSINESS_ERROR")
@@ -26,7 +26,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFound(NoResourceFoundException ex) {
-
         log.debug("Recurso no encontrado: {}", ex.getResourcePath());
         ErrorResponse error = ErrorResponse.builder()
                 .mensaje("El recurso solicitado no existe.")
@@ -38,7 +37,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex) {
-
         log.error("Error interno no controlado: ", ex);
 
         String mensajeReal = ex.getMessage() != null ? ex.getMessage() : ex.getClass().getName();

@@ -58,13 +58,17 @@ CREATE TABLE public."Transaccion" (
 
     "IdCuentaDestino"        INTEGER NULL,
 
+    "SaldoResultanteDestino" NUMERIC(15,2) NULL, -- Para transferencias internas
+
+
 
 
     -- 3. Actores Externos (Solo para Interbancarias)
 
     "CuentaExterna"          VARCHAR(50) NULL, -- Puede ser origen o destino según el flujo
 
-    "IdBancoExterno"         INTEGER NULL,     -- El banco de la contraparte
+    "IdBancoExterno"         VARCHAR(20) NULL,     -- Cambiado de INTEGER a VARCHAR para soportar 'BANTEC', 'ECUSOL', etc.
+
 
 
 

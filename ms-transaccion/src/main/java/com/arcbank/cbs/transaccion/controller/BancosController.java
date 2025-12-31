@@ -3,14 +3,10 @@ package com.arcbank.cbs.transaccion.controller;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 
 import com.arcbank.cbs.transaccion.client.SwitchClient;
 
@@ -27,33 +23,20 @@ import lombok.extern.slf4j.Slf4j;
 public class BancosController {
 
     private final SwitchClient switchClient;
-    private final RestTemplate restTemplate = new RestTemplate();
-
-    @Value("${app.switch.network-url:http://network-management:8082}")
-    private String networkManagementUrl;
 
     @GetMapping
     @Operation(summary = "Listar bancos disponibles para transferencias interbancarias")
     public ResponseEntity<?> listarBancos() {
         try {
-            log.info("Consultando bancos del switch DIGICONECU en: {}", networkManagementUrl);
+            log.info("Consultando bancos del switch DIGICONECU usando SwitchClient");
 
-            String url = networkManagementUrl + "/api/v1/red/bancos";
-            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    null,
-                    new ParameterizedTypeReference<List<Map<String, Object>>>() {
-                    });
+            List<Map<String, Object>> bancos = switchClient.obtenerBancos();
 
-            List<Map<String, Object>> bancos = response.getBody();
             if (bancos == null) {
                 bancos = List.of();
             }
 
-            List<Map<String, Object>> bancosExternos = bancos.stream()
-                    .filter(b -> !"BANTEC".equals(b.get("codigo")))
-                    .toList();
+            List<Map<String, Object>> bancosExternos = bancos;
 
             log.info("Bancos disponibles para transferencia: {}", bancosExternos.size());
 
@@ -67,7 +50,7 @@ public class BancosController {
             return ResponseEntity.ok(Map.of(
                     "bancos", List.of(),
                     "total", 0,
-                    "error", "No se pudo conectar al switch interbancario"));
+                    "error", "No se pudo conectar al switch interbancario: " + e.getMessage()));
         }
     }
 

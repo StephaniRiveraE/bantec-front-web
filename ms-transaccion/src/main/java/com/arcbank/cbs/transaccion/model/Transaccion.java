@@ -46,7 +46,7 @@ public class Transaccion {
     @Column(name = "\"CuentaExterna\"", length = 50)
     private String cuentaExterna;
 
-    @Column(name = "\"IdBancoExterno\"", length = 50)
+    @Column(name = "\"IdBancoExterno\"", length = 20)
     private String idBancoExterno;
 
     @Column(name = "\"Monto\"", nullable = false, precision = 15, scale = 2)
