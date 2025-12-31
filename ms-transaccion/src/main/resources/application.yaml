@@ -36,9 +36,9 @@ app:
     cuentas-url: ${CUENTAS_URL:http://localhost:8081}
 
   switch:
-    url: ${APP_SWITCH_URL:http://3.140.230.212:8000}
+    url: ${APP_SWITCH_URL:https://switch-interbank.ddns.net}
     apikey: ${APP_SWITCH_APIKEY:}
-    network-url: ${APP_SWITCH_URL:http://3.140.230.212:8000}
+    network-url: ${APP_SWITCH_URL:https://switch-interbank.ddns.net}
 
   banco:
     codigo: ${BANCO_CODIGO:BANTEC}

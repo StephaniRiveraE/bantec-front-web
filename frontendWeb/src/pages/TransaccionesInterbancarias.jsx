@@ -31,24 +31,20 @@ export default function TransaccionesInterbancarias() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        let cancelled = false;
+    const BANCOS_REGISTRADOS = [
+        { id: 'NEXUS_BANK', nombre: 'NEXUS_BANK', codigo: 'NEXUS_BANK', bin: '270100' },
+        { id: 'ECUSOL_BK', nombre: 'ECUSOL_BK', codigo: 'ECUSOL_BK', bin: '370100' },
+        { id: 'ARCBANK', nombre: 'ARCBANK', codigo: 'ARCBANK', bin: '400000' },
+        { id: 'BANTEC', nombre: 'BANTEC', codigo: 'BANTEC', bin: '100000' },
+    ];
 
-        getBancos().then(list => {
-            if (!cancelled && Array.isArray(list)) {
-                // Ensure we have 'id' and 'name' properties for the select
-                // getBancos helper in bancaApi maps it to { id, nombre, codigo }
-                // We want to use 'codigo' as the BIC value.
-                setBanks(list);
-            }
-        }).catch(err => console.error("Error loading banks:", err));
+    useEffect(() => {
+        setBanks(BANCOS_REGISTRADOS);
 
         // Si cambia la lista de cuentas y no hay seleccionada, seleccionar la primera
         if (accounts.length > 0 && !fromAccId) {
             setFromAccId(accounts[0].id)
         }
-
-        return () => { cancelled = true; }
     }, [accounts, fromAccId]);
 
     const goToStep2 = () => {
@@ -89,11 +85,14 @@ export default function TransaccionesInterbancarias() {
         setError("");
 
         try {
+            const selectedBank = banks.find(b => (b.codigo || b.id) === bankBic);
+
             const request = {
                 tipoOperacion: "TRANSFERENCIA_SALIDA",
                 idCuentaOrigen: fromAccId, // Integer ID interno
-                cuentaExterna: toAccount, // Cuenta destino en otro banco
-                bancoDestino: bankBic,    // SENDING BIC (e.g. ARCBANK)
+                cuentaExterna: toAccount,  // Cuenta destino en otro banco
+                bancoDestino: bankBic,     // SENDING BIC (e.g. ARCBANK)
+                idBancoExterno: selectedBank ? parseInt(selectedBank.bin) : null,
                 beneficiario: toName,
                 monto: Number(amount),
                 canal: "WEB",
@@ -167,7 +166,7 @@ export default function TransaccionesInterbancarias() {
                         <option value="">-- Seleccione un banco --</option>
                         {banks.map((b) => (
                             <option key={b.id || b.codigo} value={b.codigo || b.id}>
-                                {b.nombre || b.name} ({b.codigo || b.id})
+                                {b.nombre || b.name} - BIN: {b.bin}
                             </option>
                         ))}
                     </select>
