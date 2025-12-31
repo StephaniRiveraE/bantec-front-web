@@ -24,7 +24,7 @@ public class TransaccionRequestDTO {
     private Integer idCuentaDestino;
 
     private String cuentaExterna;
-    private Integer idBancoExterno;
+    private String idBancoExterno;
     private String bancoDestino;
     private Integer idTransaccionReversa;
 

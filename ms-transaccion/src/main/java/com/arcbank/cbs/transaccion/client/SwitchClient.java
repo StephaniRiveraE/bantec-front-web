@@ -24,19 +24,17 @@ public interface SwitchClient {
      * Enviar una transferencia interbancaria al switch
      * POST /api/v2/transfers
      */
-    @PostMapping("/api/v2/transfers")
+    @PostMapping("/api/switch/v1/transferir")
     SwitchTransferResponse enviarTransferencia(@RequestBody SwitchTransferRequest request);
 
     /**
      * Consultar el estado de una transferencia
-     * GET /api/v2/transfers/{instructionId}
      */
-    @GetMapping("/api/v2/transfers/{instructionId}")
+    @GetMapping("/api/switch/v1/transfers/{instructionId}")
     SwitchTransferResponse consultarEstado(@PathVariable("instructionId") String instructionId);
 
     /**
      * Obtener lista de bancos conectados al switch
-     * GET /api/v1/red/bancos
      */
     @GetMapping("/api/v1/red/bancos")
     List<Map<String, Object>> obtenerBancos();

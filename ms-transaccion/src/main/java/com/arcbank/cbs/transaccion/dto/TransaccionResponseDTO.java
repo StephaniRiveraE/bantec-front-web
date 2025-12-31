@@ -16,16 +16,16 @@ public class TransaccionResponseDTO {
     private Integer idTransaccion;
     private String referencia;
     private String tipoOperacion;
-    
+
     private Integer idCuentaOrigen;
     private Integer idCuentaDestino;
-    
+
     private String cuentaExterna;
-    private Integer idBancoExterno;
-    
+    private String idBancoExterno;
+
     private BigDecimal monto;
     private BigDecimal saldoResultante;
-    
+
     private LocalDateTime fechaCreacion;
     private String descripcion;
     private String canal;

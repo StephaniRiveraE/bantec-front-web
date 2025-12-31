@@ -91,8 +91,8 @@ export default function TransaccionesInterbancarias() {
                 tipoOperacion: "TRANSFERENCIA_SALIDA",
                 idCuentaOrigen: fromAccId, // Integer ID interno
                 cuentaExterna: toAccount,  // Cuenta destino en otro banco
-                bancoDestino: bankBic,     // SENDING BIC (e.g. ARCBANK)
-                idBancoExterno: selectedBank ? parseInt(selectedBank.bin) : null,
+                idBancoExterno: bankBic,     // Enviamos el BIC (ej: ARCBANK)
+                bancoDestino: bankBic,       // Mantenemos bancoDestino por compatibilidad
                 beneficiario: toName,
                 monto: Number(amount),
                 canal: "WEB",

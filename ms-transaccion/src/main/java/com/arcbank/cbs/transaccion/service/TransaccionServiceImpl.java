@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.arcbank.cbs.transaccion.client.CuentaCliente;
-import com.arcbank.cbs.transaccion.client.SwitchClientService;
 import com.arcbank.cbs.transaccion.client.SwitchClient;
 import com.arcbank.cbs.transaccion.client.ClienteClient;
 import com.arcbank.cbs.transaccion.dto.SaldoDTO;
@@ -33,7 +32,7 @@ public class TransaccionServiceImpl implements TransaccionService {
 
     private final TransaccionRepository transaccionRepository;
     private final CuentaCliente cuentaCliente;
-    private final SwitchClientService switchClient; // Updated to SwitchClientService
+    private final SwitchClient switchClient;
     private final ClienteClient clienteClient;
 
     @Value("${app.banco.codigo:BANTEC}")
@@ -187,21 +186,9 @@ public class TransaccionServiceImpl implements TransaccionService {
                                                 // The existing code uses `request.getIdBancoExterno()`.
                                                 // I'll stick to string conversion or see if DTO has string.
                                                 .targetBankId(
-                                                        request.getBancoDestino() != null ? request.getBancoDestino()
+                                                        request.getIdBancoExterno() != null
+                                                                ? request.getIdBancoExterno()
                                                                 : "SWITCH")
-                                                // Note: I am assuming getBancoDestino() exists or similar.
-                                                // If not, I will need to verify the DTO.
-                                                // Let's check the view_file output of TransaccionServiceImpl again.
-                                                // It does NOT show getBancoDestino(). It shows getIdBancoExterno().
-                                                // I'll use String.valueOf(getIdBancoExterno()) for now to avoid
-                                                // compilation error,
-                                                // BUT I need to fix DTO if I want to pass "ARCBANK".
-                                                // Actually, `TransaccionesInterbancarias.jsx` sends `bancoDestino`.
-                                                // Does `TransaccionRequestDTO` have `bancoDestino`?
-                                                // I need to check `TransaccionRequestDTO`.
-                                                // For now, I'll use a placeholder and fix it in next step if field is
-                                                // missing.
-                                                // Or I can add `bancoDestino` to the DTO.
                                                 .accountId(request.getCuentaExterna())
                                                 .accountType("SAVINGS")
                                                 .build())
