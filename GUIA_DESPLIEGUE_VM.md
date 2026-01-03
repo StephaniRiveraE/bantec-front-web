@@ -69,34 +69,31 @@ cd BnacoBantec
 
 ## 3. Configurar Certificados SSL
 
-### 3.1 Generar Certificados con Let's Encrypt (DuckDNS)
+### 3.1 Generar Certificados Públicos (DuckDNS + Let's Encrypt)
+Este proceso usa Docker para evitar instalar dependencias en el host y permite la autorenovación.
+
+1.  **Asegurar que DuckDNS apunte a la IP**: `35.209.79.193`
+2.  **Generar certificado inicial**:
 ```bash
-# Instalar Certbot
-sudo apt-get update && sudo apt-get install certbot -y
-
-# Detener temporalmente el proxy para liberar el puerto 80 (si usas modo standalone)
-docker-compose -f docker-compose.prod.yml stop nginx-proxy
-
-# Generar certificados para el nuevo dominio
-sudo certbot certonly --standalone \
+# Ejecutar certbot en modo standalone (necesita el puerto 80 libre temporalmente)
+docker run -it --rm --name certbot \
+  -v "$(pwd)/nginx/certs:/etc/letsencrypt" \
+  -v "$(pwd)/nginx/certbot:/var/www/certbot" \
+  -p 80:80 \
+  certbot/certbot certonly --standalone \
   -d bantec-bank.duckdns.org \
   --email arcbank2@gmail.com \
   --agree-tos \
   --non-interactive
-
-# Crear directorio de certificados en el proyecto si no existe
-mkdir -p nginx/certs
-
-# Copiar certificados frescos (reemplaza la ruta con la de DuckDNS)
-sudo cp /etc/letsencrypt/live/bantec-bank.duckdns.org/fullchain.pem nginx/certs/
-sudo cp /etc/letsencrypt/live/bantec-bank.duckdns.org/privkey.pem nginx/certs/
-
-# Ajustar permisos para que Docker pueda leerlos
-sudo chown -R $USER:$USER nginx/certs
-
-# Iniciar el proxy nuevamente
-docker-compose -f docker-compose.prod.yml start nginx-proxy
 ```
+
+3.  **Ajustar permisos**:
+```bash
+sudo chown -R $USER:$USER nginx/certs
+```
+
+> [!NOTE]
+> El archivo `docker-compose.prod.yml` ya tiene un servicio `certbot` que se encargará de renovar los certificados automáticamente cada 12 horas.
 
 ### 3.2 Certificados de Desarrollo (Autofirmados)
 ```bash
