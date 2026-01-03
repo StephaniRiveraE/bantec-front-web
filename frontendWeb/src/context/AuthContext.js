@@ -189,14 +189,21 @@ export function AuthProvider({ children }) {
   }
 
   const addTransaction = (tx) => {
+    console.log("📝 [AuthContext] Añadiendo transacción:", tx)
     setState(s => {
       const txs = [tx, ...(s.transactions || [])]
       // Actualización optimista del saldo en el frontend
-      const accounts = s.user.accounts.map(a =>
-        a.id === tx.accId
-          ? { ...a, balance: Number((a.balance + tx.amount).toFixed(2)) }
-          : a
-      )
+      const accounts = s.user.accounts.map(a => {
+        // Asegurar comparación robusta (string vs number)
+        if (String(a.id) === String(tx.accId)) {
+          const oldBalance = Number(a.balance);
+          const change = Number(tx.amount);
+          const newBalance = Number((oldBalance + change).toFixed(2));
+          console.log(`💰 [AuthContext] Balance Cuenta ${a.number}: ${oldBalance} -> ${newBalance} (Cambio: ${change})`);
+          return { ...a, balance: newBalance };
+        }
+        return a;
+      })
       return { ...s, transactions: txs, user: { ...s.user, accounts } }
     })
   }
