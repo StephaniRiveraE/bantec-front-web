@@ -26,22 +26,9 @@ jobs:
           port: 22
           command_timeout: 45m
           script: |
-            echo "📌 Iniciando despliegue BANTEC: $(date)"
+            echo "📌 Inicio de deploy BANTEC: $(date)"
 
-            # === 1. VARIABLES Y DIRECTORIOS ===
-            PROJECT_DIR="$HOME/BnacoBantec"
-
-            # === 2. ACTUALIZAR REPOSITORIO ===
-            if [ ! -d "$PROJECT_DIR" ]; then
-              git clone https://github.com/AlisonTamayo/BnacoBantec.git "$PROJECT_DIR"
-            fi
-            cd "$PROJECT_DIR"
-            git fetch origin main
-            git reset --hard origin/main
-            git config --global --add safe.directory "*"
-            chmod +x *.sh
-
-            # === 3. SWAP (Opcional, si no existe) ===
+            # Crear swap si no existe
             if [ ! -f /swapfile ]; then
               echo "📝 Creando swap de 2GB..."
               sudo fallocate -l 2G /swapfile
@@ -50,16 +37,82 @@ jobs:
               sudo swapon /swapfile
             fi
 
-            # === 4. DESPLIEGUE SEGURO AUTOMATIZADO ===
-            # Pasamos el dominio y el token de los secrets de GitHub
-            DOMAIN="${{ secrets.DUCKDNS_DOMAIN }}.duckdns.org"
-            TOKEN="${{ secrets.DUCKDNS_TOKEN }}"
-            
-            sudo ./deploy-secure.sh "$DOMAIN" "$TOKEN"
+            # Clonar o actualizar repositorio
+            PROJECT_DIR="$HOME/BnacoBantec"
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "📥 Clonando repositorio BANTEC..."
+              cd ~
+              git clone https://github.com/AlisonTamayo/BnacoBantec.git
+            fi
 
-            # === 5. LIMPIEZA ===
+            cd "$PROJECT_DIR"
+            echo "🔄 Actualizando código desde main..."
+            git fetch origin main
+            git reset --hard origin/main
+            git config --global --add safe.directory "*"
+
+            # Preparar certificados
+            echo "🔐 Verificando certificados..."
+
+            # mTLS para comunicación microservices
+            if [ ! -f "$PROJECT_DIR/ms-transaccion/certs/bantec-keystore.p12" ]; then
+              echo "📝 Generando certificados mTLS por defecto..."
+              chmod +x "$PROJECT_DIR/generate-mtls-certs.sh"
+              "$PROJECT_DIR/generate-mtls-certs.sh"
+            fi
+
+            # Certificados SSL para Nginx (DuckDNS)
+            DOMAIN="${{ secrets.DUCKDNS_DOMAIN }}.duckdns.org"
+            echo "🌐 Configurando dominio: $DOMAIN"
+            
+            # Actualizar nginx.conf con el dominio real
+            sed -i "s/bantec-bank\.duckdns\.org/$DOMAIN/g" "$PROJECT_DIR/nginx/nginx.conf"
+            
+            echo "🌐 Verificando certificados SSL para $DOMAIN..."
+            CERT_DIR="$PROJECT_DIR/nginx/certs/live/$DOMAIN"
+            
+            if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
+              echo "🛡️ Certificado real no encontrado. Intentando obtener de Let's Encrypt..."
+              
+              # Detener Nginx si está corriendo para liberar el puerto 80
+              sudo docker stop nginx-proxy-bantec || true
+              
+              # Ejecutar Certbot Standalone
+              sudo docker run --rm --name certbot \
+                -p 80:80 \
+                -v "$(pwd)/nginx/certs:/etc/letsencrypt" \
+                -v "$(pwd)/nginx/certbot:/var/www/certbot" \
+                certbot/certbot certonly --standalone \
+                -d "$DOMAIN" \
+                --email alison.tamayo@gmail.com \
+                --agree-tos --non-interactive --no-eff-email || echo "⚠️ Falló la obtención automática."
+
+              # Fallback: Si no se obtuvo el certificado real, crear uno temporal para que Nginx arranque
+              if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
+                echo "📝 Creando certificado temporal (self-signed) para evitar errores de Nginx..."
+                sudo mkdir -p "$CERT_DIR"
+                sudo openssl req -x509 -nodes -days 7 -newkey rsa:2048 \
+                  -keyout "$CERT_DIR/privkey.pem" \
+                  -out "$CERT_DIR/fullchain.pem" \
+                  -subj "/C=EC/ST=Pichincha/L=Quito/O=Bantec/CN=$DOMAIN"
+              fi
+            fi
+
+            # Limpiar Docker antes del build
+            echo "🧹 Limpiando imágenes y contenedores antiguos..."
             sudo docker image prune -f
 
-            echo "📊 Estado Final:"
+            # Construir y levantar con docker-compose (producción)
+            echo "🚀 Reiniciando servicios y limpiando basura..."
+            sudo docker-compose -f docker-compose.prod.yml down --remove-orphans
+            sudo docker-compose -f docker-compose.prod.yml up -d --build --force-recreate
+
+            # Reiniciar Nginx Proxy para aplicar certificados y configs
+            echo "🔄 Reiniciando Proxy Nginx..."
+            sudo docker restart nginx-proxy-bantec || true
+
+            # Mostrar estado final de contenedores
+            echo "📊 Estado actual de contenedores:"
             sudo docker ps
+
             echo "✅ Deploy BANTEC completado: $(date)"

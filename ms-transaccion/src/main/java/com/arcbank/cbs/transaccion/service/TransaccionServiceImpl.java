@@ -139,7 +139,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                     }
 
                     try {
-                        log.info("Enviando transferencia al switch: {} -> {}", numeroCuentaOrigen,
+                        log.info("🚀 [BANTEC] Iniciando transferencia al switch: {} -> {}", numeroCuentaOrigen,
                                 request.getCuentaExterna());
 
                         String messageId = "MSG-BANTEC-" + System.currentTimeMillis();
@@ -178,14 +178,18 @@ public class TransaccionServiceImpl implements TransaccionService {
                                         .build())
                                 .build();
 
-                        log.info("🚀 Enviando a Switch: Debtor={} Creditor={} Monto={}",
+                        log.info("📤 Enviando a Switch DIGICONECU: Debtor={} Creditor={} Monto={}",
                                 nombreDebtor, beneficiario, request.getMonto());
 
                         SwitchTransferResponse switchResp = switchClient.enviarTransferencia(switchRequest);
 
                         if (switchResp == null || !switchResp.isSuccess()) {
-                            log.warn("❌ Switch rechazó transferencia. Response: {}", switchResp);
+                            log.warn("❌ [BANTEC] Switch rechazó transferencia. Response: {}", switchResp);
+
+                            // LÓGICA DE REVERSIÓN (REVIVE)
                             BigDecimal saldoRevertido = procesarSaldo(trx.getIdCuentaOrigen(), montoTotal);
+                            log.info("🔄 [BANTEC] Saldo revertido en cuenta {}. Nuevo saldo: {}",
+                                    trx.getIdCuentaOrigen(), saldoRevertido);
 
                             String switchError = "Error desconocido";
                             if (switchResp != null && switchResp.getError() != null) {
@@ -200,16 +204,22 @@ public class TransaccionServiceImpl implements TransaccionService {
                             return mapearADTO(fallida, null);
                         }
 
-                        log.info("Transferencia enviada al switch exitosamente. Referencia: {}", trx.getReferencia());
+                        log.info("✅ [BANTEC] Transferencia aceptada por el switch. Referencia: {}",
+                                trx.getReferencia());
                         saldoImpactado = saldoDebitado;
 
                     } catch (Exception e) {
-                        log.error("Error comunicando con switch, revirtiendo débito: {}", e.getMessage());
+                        log.error("❌ [BANTEC] Error de comunicación con switch, revirtiendo débito: {}",
+                                e.getMessage());
+
+                        // LÓGICA DE REVERSIÓN (REVIVE)
                         BigDecimal saldoRevertido = procesarSaldo(trx.getIdCuentaOrigen(), montoTotal);
+                        log.info("🔄 [BANTEC] Saldo revertido por error técnico en cta {}. Nuevo saldo: {}",
+                                trx.getIdCuentaOrigen(), saldoRevertido);
 
                         trx.setEstado("FALLIDA");
                         trx.setSaldoResultante(saldoRevertido);
-                        trx.setDescripcion("ERROR DE COMUNICACIÓN: " + e.getMessage());
+                        trx.setDescripcion("ERROR TÉCNICO SWITCH: " + e.getMessage());
 
                         Transaccion fallida = transaccionRepository.save(trx);
                         return mapearADTO(fallida, null);

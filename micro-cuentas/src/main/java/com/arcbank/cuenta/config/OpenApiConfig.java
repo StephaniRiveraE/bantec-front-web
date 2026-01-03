@@ -17,7 +17,7 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("ARCBANK - Microservicio Cuentas API")
+                        .title("BANTEC - Microservicio Cuentas API")
                         .version("v1") // Coincide con tu ruta /api/v1/...
                         .description("API para la gestión de cuentas de ahorro, tipos de cuenta y tasas de interés"));
     }
@@ -26,7 +26,7 @@ public class OpenApiConfig {
     @Bean
     public ObjectMapper objectMapper() {
         return new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { realizarTransferenciaInterbancaria } from '../services/bancaApi'
+import { realizarTransferenciaInterbancaria, getBancos } from '../services/bancaApi'
 import { useNavigate } from "react-router-dom";
 import { FiHash, FiUser, FiArrowRight, FiCheck, FiDownload, FiInfo, FiCreditCard, FiActivity } from 'react-icons/fi';
 import { MdOutlineAccountBalance } from 'react-icons/md';
@@ -22,15 +22,45 @@ export default function TransaccionesInterbancarias() {
     const [amount, setAmount] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [loadingBanks, setLoadingBanks] = useState(false);
 
-    const BANCOS_REGISTRADOS = [
-        { id: 'NEXUS_BANK', nombre: 'Nexus Bank', codigo: 'NEXUS_BANK', bin: '270100' },
-        { id: 'ECUSOL_BK', nombre: 'Ecusol Bank', codigo: 'ECUSOL_BK', bin: '370100' },
-        { id: 'ARCBANK', nombre: 'Arcbank', codigo: 'ARCBANK', bin: '400000' },
-    ];
-
+    // Carga de bancos dinámica desde el Switch vía Backend BANTEC
     useEffect(() => {
-        setBanks(BANCOS_REGISTRADOS);
+        const fetchBanks = async () => {
+            setLoadingBanks(true);
+            try {
+                const data = await realizarTransferenciaInterbancaria.getBancos ? await realizarTransferenciaInterbancaria.getBancos() : await import('../services/bancaApi').then(m => m.getBancos());
+                // Nota: El servicio bancaApi.js ya tiene getBancos()
+            } catch (err) {
+                console.error("Error cargando bancos:", err);
+            } finally {
+                setLoadingBanks(false);
+            }
+        };
+
+        // Mejor usamos directamente el servicio importado
+        const load = async () => {
+            setLoadingBanks(true);
+            try {
+                const list = await getBancos(); // Directly call the imported getBancos
+                if (list && list.length > 0) {
+                    setBanks(list);
+                } else {
+                    // Fallback si el switch no responde
+                    setBanks([
+                        { id: 'NEXUS_BANK', nombre: 'Nexus Bank', codigo: 'NEXUS_BANK' },
+                        { id: 'ECUSOL_BK', nombre: 'Ecusol Bank', codigo: 'ECUSOL_BK' },
+                        { id: 'ARCBANK', nombre: 'Banco Arcbank', codigo: 'ARCBANK' },
+                    ]);
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoadingBanks(false);
+            }
+        };
+        load();
+
         if (accounts.length > 0 && !fromAccId) setFromAccId(accounts[0].id);
     }, [accounts, fromAccId]);
 
@@ -74,6 +104,8 @@ export default function TransaccionesInterbancarias() {
                 desc: `Transf. Interbancaria a ${toName} (Incl. $0.45 comisión)`,
                 fecha: new Date().toISOString()
             });
+            // Sincronización automática con el backend para reflejar el saldo real
+            await refreshAccounts();
             setStep(4);
         } catch (err) {
             setError(err.message || 'Error en la transferencia interbancaria');

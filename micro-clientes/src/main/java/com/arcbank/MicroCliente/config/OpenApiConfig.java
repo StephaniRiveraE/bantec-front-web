@@ -16,7 +16,7 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("ARCBANK - Microservicio Clientes API")
+                        .title("BANTEC - Microservicio Clientes API")
                         .version("v1")
                         .description("API para la gestión de clientes, personas, empresas y representantes legales"));
     }
