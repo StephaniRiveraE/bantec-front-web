@@ -69,23 +69,33 @@ cd BnacoBantec
 
 ## 3. Configurar Certificados SSL
 
-### 3.1 Generar Certificados con Let's Encrypt (Producción)
+### 3.1 Generar Certificados con Let's Encrypt (DuckDNS)
 ```bash
 # Instalar Certbot
-sudo apt-get install certbot -y
+sudo apt-get update && sudo apt-get install certbot -y
 
-# Generar certificados
+# Detener temporalmente el proxy para liberar el puerto 80 (si usas modo standalone)
+docker-compose -f docker-compose.prod.yml stop nginx-proxy
+
+# Generar certificados para el nuevo dominio
 sudo certbot certonly --standalone \
-  -d bantec.35-209-79-193.sslip.io \
+  -d bantec-bank.duckdns.org \
   --email arcbank2@gmail.com \
   --agree-tos \
   --non-interactive
 
-# Copiar certificados al proyecto
-sudo mkdir -p nginx/certs
-sudo cp /etc/letsencrypt/live/bantec.35-209-225-8.sslip.io/fullchain.pem nginx/certs/
-sudo cp /etc/letsencrypt/live/bantec.35-209-225-8.sslip.io/privkey.pem nginx/certs/
+# Crear directorio de certificados en el proyecto si no existe
+mkdir -p nginx/certs
+
+# Copiar certificados frescos (reemplaza la ruta con la de DuckDNS)
+sudo cp /etc/letsencrypt/live/bantec-bank.duckdns.org/fullchain.pem nginx/certs/
+sudo cp /etc/letsencrypt/live/bantec-bank.duckdns.org/privkey.pem nginx/certs/
+
+# Ajustar permisos para que Docker pueda leerlos
 sudo chown -R $USER:$USER nginx/certs
+
+# Iniciar el proxy nuevamente
+docker-compose -f docker-compose.prod.yml start nginx-proxy
 ```
 
 ### 3.2 Certificados de Desarrollo (Autofirmados)
@@ -172,8 +182,8 @@ docker exec db-transacciones-bantec pg_isready -U postgres
 
 | Servicio | URL | Descripción |
 |---|---|---|
-| **Banca Web** | https://bantec.35-209-79-193.sslip.io | Frontend Web |
-| **Cajero ATM** | https://bantec.35-209-79-193.sslip.io:8443 | Frontend Cajero |
+| **Banca Web** | https://bantec-bank.duckdns.org | Frontend Web |
+| **Cajero ATM** | https://bantec-bank.duckdns.org:8443 | Frontend Cajero |
 | **API Gateway** | http://35.209.79.193:8080 | API REST |
 | **Swagger UI** | http://35.209.79.193:8080/swagger-ui.html | Documentación API |
 | **Micro Clientes** | http://35.209.79.193:8083/swagger-ui.html | Swagger Clientes |

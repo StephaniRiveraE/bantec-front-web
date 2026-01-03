@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { realizarTransferenciaInterbancaria, getBancos } from '../services/bancaApi'
+import { realizarTransferenciaInterbancaria } from '../services/bancaApi'
 import { useNavigate } from "react-router-dom";
+import { FiHash, FiUser, FiArrowRight, FiCheck, FiDownload, FiInfo, FiCreditCard, FiActivity } from 'react-icons/fi';
+import { MdOutlineAccountBalance } from 'react-icons/md';
+import './Transferir.css';
 
 export default function TransaccionesInterbancarias() {
-    const { state, addTransaction } = useAuth(); // addTransaction es opcional si solo usas backend
+    const { state, addTransaction } = useAuth();
     const navigate = useNavigate();
 
-    // Cuentas del usuario (Manejo defensivo si aún no cargan)
-    const accounts = (state && Array.isArray(state.user?.accounts) && state.user.accounts.length)
-        ? state.user.accounts
-        : [];
-
-    // Si no hay cuentas, no se puede operar (o mostrar mock temporal)
+    const accounts = state?.user?.accounts || [];
     const firstAccId = accounts[0]?.id || '';
 
     const [step, setStep] = useState(1);
@@ -20,12 +18,7 @@ export default function TransaccionesInterbancarias() {
     const [bankBic, setBankBic] = useState("");
     const [banks, setBanks] = useState([]);
     const [toName, setToName] = useState("");
-
-
     const [fromAccId, setFromAccId] = useState(firstAccId);
-
-    const fromAccount = accounts.find(a => a.id === fromAccId) || accounts[0] || { number: '---', balance: 0 };
-
     const [amount, setAmount] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -38,22 +31,15 @@ export default function TransaccionesInterbancarias() {
 
     useEffect(() => {
         setBanks(BANCOS_REGISTRADOS);
-
-        if (accounts.length > 0 && !fromAccId) {
-            setFromAccId(accounts[0].id)
-        }
+        if (accounts.length > 0 && !fromAccId) setFromAccId(accounts[0].id);
     }, [accounts, fromAccId]);
 
+    const fromAccount = accounts.find(a => a.id === fromAccId) || accounts[0] || { number: '---', balance: 0 };
+
     const goToStep2 = () => {
-        if (!toAccount || !bankBic || !toName)
-            return setError("Todos los campos son obligatorios.");
-
-        if (!/^\d+$/.test(toAccount))
-            return setError("El número de cuenta solo debe contener números.");
-
-        if (toAccount.length < 6)
-            return setError("El número de cuenta parece inválido (mínimo 6 dígitos).");
-
+        if (!toAccount || !bankBic || !toName) return setError("Todos los campos son obligatorios.");
+        if (!/^\d+$/.test(toAccount)) return setError("El número de cuenta solo debe contener números.");
+        if (toAccount.length < 6) return setError("El número de cuenta parece inválido.");
         setError("");
         setStep(2);
     };
@@ -61,37 +47,26 @@ export default function TransaccionesInterbancarias() {
     const goToStep3 = () => {
         const num = Number(amount);
         if (!num || num <= 0) return setError("Monto inválido.");
-
-        if (num > (fromAccount.balance || 0))
-            return setError("Saldo insuficiente en la cuenta.");
-
+        if (num > (fromAccount.balance || 0)) return setError("Saldo insuficiente.");
         setError("");
         setStep(3);
     };
 
     const confirmTransfer = async () => {
-        if (!fromAccId) {
-            return setError('Seleccione una cuenta de origen válida.');
-        }
-
+        if (!fromAccId) return setError('Seleccione una cuenta de origen válida.');
         setLoading(true);
-        setError("");
-
         try {
             const request = {
                 tipoOperacion: "TRANSFERENCIA_SALIDA",
                 idCuentaOrigen: Number(fromAccId),
                 cuentaExterna: toAccount,
-                idBancoExterno: bankBic, // BIC correcto (ej: ARCBANK)
+                idBancoExterno: bankBic,
                 beneficiario: toName,
                 monto: Number(amount),
                 canal: "WEB",
                 descripcion: `Transferencia a ${toName} - Banco ${bankBic}`
             }
-
             await realizarTransferenciaInterbancaria(request);
-
-
             addTransaction({
                 accId: fromAccId,
                 amount: -Number(amount),
@@ -99,17 +74,8 @@ export default function TransaccionesInterbancarias() {
                 desc: `Transferencia a ${toName} (${bankBic})`,
                 fecha: new Date().toISOString()
             });
-
-            // Éxito
             setStep(4);
-
-            // Opcional: Actualizar saldo localmente o recargar
-            setTimeout(() => {
-                navigate('/movimientos');
-            }, 3000);
-
         } catch (err) {
-            console.error(err);
             setError(err.message || 'Error en la transferencia interbancaria');
         } finally {
             setLoading(false);
@@ -117,185 +83,160 @@ export default function TransaccionesInterbancarias() {
     };
 
     const downloadReceipt = () => {
-        const text =
-            `TRANSFERENCIA INTERBANCARIA EXITOSA\n\n` +
-            `Monto: $${Number(amount).toFixed(2)}\n` +
-            `Desde cuenta: ${fromAccount.number}\n` +
-            `A nombre de: ${toName}\n` +
-            `Cuenta destino: ${toAccount}\n` +
-            `Banco destino: ${bankBic}\n` +
-            `Fecha: ${new Date().toLocaleString()}\n`;
-
+        const text = `TRANSFERENCIA INTERBANCARIA EXITOSA\n\nMonto: $${Number(amount).toFixed(2)}\nDesde cuenta: ${fromAccount.number}\nA nombre de: ${toName}\nCuenta destino: ${toAccount}\nBanco destino: ${bankBic}\nFecha: ${new Date().toLocaleString()}\n`;
         const blob = new Blob([text], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `comprobante_interbancario_${Date.now()}.txt`;
+        a.download = `comprobante_bantec_${Date.now()}.txt`;
         a.click();
         URL.revokeObjectURL(url);
     };
 
-    // Helper to find bank name for display
     const getBankName = (bic) => {
         const b = banks.find(x => x.id === bic || x.codigo === bic);
         return b ? b.nombre : bic;
     };
 
+    if (accounts.length === 0) {
+        return <div className="transfer-page"><div className="transfer-error">No tiene cuentas activas para operar.</div></div>;
+    }
+
     return (
-        <div style={{ padding: 30 }}>
-            {step === 1 && (
-                <div style={styles.card}>
-                    <h2 style={styles.title}>Transferencia Interbancaria</h2>
+        <div className="transfer-page">
+            <div className="transfer-container">
+                <h2 className="transfer-title text-gradient">Pagos Interbancarios</h2>
 
-                    <label>Banco Destino</label>
-                    <select style={styles.input} value={bankBic} onChange={e => setBankBic(e.target.value)}>
-                        <option value="">-- Seleccione un banco --</option>
-                        {banks.map((b) => (
-                            <option key={b.id || b.codigo} value={b.codigo || b.id}>
-                                {b.nombre || b.name} - BIN: {b.bin}
-                            </option>
-                        ))}
-                    </select>
-
-                    <label>N° de Cuenta Destino</label>
-                    <input
-                        style={styles.input}
-                        value={toAccount}
-                        onChange={(e) => setToAccount(e.target.value.replace(/\D/g, ''))}
-                        placeholder="Solo números"
-                    />
-
-                    <label>Beneficiario (Nombres)</label>
-                    <input
-                        style={styles.input}
-                        value={toName}
-                        onChange={e => setToName(e.target.value)}
-                        placeholder="Nombre del titular destino"
-                    />
-
-                    {error && <p style={styles.error}>{error}</p>}
-
-                    <button style={styles.btn} onClick={goToStep2}>
-                        Continuar
-                    </button>
+                <div className="transfer-step-indicator">
+                    {[1, 2, 3].map(s => (
+                        <div key={s} className={`step-dot ${step === s ? 'active' : ''}`} />
+                    ))}
                 </div>
-            )}
 
-            {step === 2 && (
-                <div style={styles.card}>
-                    <h2 style={styles.title}>Transferir</h2>
-
-                    <div style={styles.balanceCircle}>
-                        <div style={styles.circleLetter}>
-                            {(fromAccount.type || 'C')[0]}
+                <div className="transfer-card">
+                    {step === 1 && (
+                        <div className="step-content">
+                            <div className="transfer-form-group">
+                                <label><MdOutlineAccountBalance /> Banco Destino</label>
+                                <select className="transfer-input" value={bankBic} onChange={e => setBankBic(e.target.value)}>
+                                    <option value="">Seleccione Entidad</option>
+                                    {banks.map((b) => (
+                                        <option key={b.id || b.codigo} value={b.codigo || b.id}>
+                                            {b.nombre} (B.I.C: {b.codigo})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="transfer-form-group">
+                                <label><FiHash /> N° de Cuenta Externo</label>
+                                <input
+                                    className="transfer-input"
+                                    value={toAccount}
+                                    onChange={(e) => setToAccount(e.target.value.replace(/\D/g, ''))}
+                                    placeholder="Ingrese número de cuenta"
+                                />
+                            </div>
+                            <div className="transfer-form-group">
+                                <label><FiUser /> Nombre Beneficiario</label>
+                                <input
+                                    className="transfer-input"
+                                    value={toName}
+                                    onChange={e => setToName(e.target.value)}
+                                    placeholder="Nombre del titular"
+                                />
+                            </div>
+                            {error && <div className="transfer-error"><FiInfo /> {error}</div>}
+                            <button className="btn btn-transfer" onClick={goToStep2} disabled={loading}>
+                                Continuar
+                            </button>
                         </div>
-                        <div style={{ fontSize: 20, fontWeight: 700 }}>
-                            {fromAccount.number || '---'}
+                    )}
+
+                    {step === 2 && (
+                        <div className="step-content">
+                            <div className="transfer-form-group">
+                                <label><FiCreditCard /> Cuenta de Origen</label>
+                                <select className="transfer-input" value={fromAccId} onChange={(e) => setFromAccId(e.target.value)}>
+                                    {accounts.map(acc => (
+                                        <option key={acc.id} value={acc.id}>
+                                            {acc.type} — {acc.number} (${acc.balance?.toFixed(2)})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="transfer-form-group">
+                                <label><FiActivity /> Monto a Enviar</label>
+                                <input
+                                    className="transfer-input"
+                                    value={amount}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        if (/^\d*\.?\d{0,2}$/.test(val)) setAmount(val);
+                                    }}
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <div className="transfer-info-box" style={{ background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.1)', padding: 15, borderRadius: 12, marginBottom: 24, fontSize: '0.8rem', color: 'var(--accent-gold)' }}>
+                                <FiInfo style={{ marginRight: 8 }} /> Esta transferencia interbancaria puede tardar hasta 24h.
+                            </div>
+                            {error && <div className="transfer-error"><FiInfo /> {error}</div>}
+                            <div className="transfer-button-row">
+                                <button className="btn-back" onClick={() => setStep(1)}>Atrás</button>
+                                <button className="btn btn-transfer" onClick={goToStep3}>Confirmar Monto</button>
+                            </div>
                         </div>
-                        <div style={{ fontSize: 26, marginTop: 5 }}>
-                            ${Number(fromAccount.balance || 0).toFixed(2)}
+                    )}
+
+                    {step === 3 && (
+                        <div className="step-content">
+                            <h3 style={{ marginBottom: 20, color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>Revisión de Datos Final</h3>
+                            <div className="transfer-summary">
+                                <div className="summary-item">
+                                    <span className="summary-label">Monto</span>
+                                    <span className="summary-value amount-highlight">${Number(amount).toFixed(2)}</span>
+                                </div>
+                                <div className="summary-item">
+                                    <span className="summary-label">Comisión</span>
+                                    <span className="summary-value">$0.45</span>
+                                </div>
+                                <div className="summary-item">
+                                    <span className="summary-label">Destino</span>
+                                    <span className="summary-value">{getBankName(bankBic)}</span>
+                                </div>
+                                <div className="summary-item">
+                                    <span className="summary-label">Beneficiario</span>
+                                    <span className="summary-value">{toName}</span>
+                                </div>
+                                <div className="summary-item">
+                                    <span className="summary-label">N° Cuenta</span>
+                                    <span className="summary-value">{toAccount}</span>
+                                </div>
+                            </div>
+                            {error && <div className="transfer-error" style={{ marginTop: 20 }}><FiInfo /> {error}</div>}
+                            <div className="transfer-button-row">
+                                <button className="btn-back" onClick={() => setStep(2)} disabled={loading}>Modificar</button>
+                                <button className="btn btn-transfer" onClick={confirmTransfer} disabled={loading}>
+                                    {loading ? 'Procesando...' : 'Confirmar y Enviar'}
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    <label style={{ fontWeight: 600 }}>Desde la cuenta</label>
-                    <select
-                        style={styles.input}
-                        value={fromAccId}
-                        onChange={(e) => setFromAccId(e.target.value)}
-                    >
-                        {accounts.map(acc => (
-                            <option key={acc.id} value={acc.id}>
-                                {acc.number} — Saldo ${acc.balance.toFixed(2)}
-                            </option>
-                        ))}
-                    </select>
-
-                    <label>Monto a transferir</label>
-                    <input
-                        style={styles.input}
-                        value={amount}
-                        onChange={e => {
-                            const val = e.target.value;
-                            if (/^\d*\.?\d{0,2}$/.test(val)) setAmount(val);
-                        }}
-                        placeholder="0.00"
-                    />
-
-                    <div style={styles.infoBar}>
-                        💡 Esta transacción puede tardar hasta 24 horas laborables.
-                    </div>
-
-                    {error && <p style={styles.error}>{error}</p>}
-
-                    <button style={styles.btn} onClick={goToStep3}>
-                        Continuar
-                    </button>
+                    {step === 4 && (
+                        <div className="step-content success-state" style={{ textAlign: 'center' }}>
+                            <div className="success-icon"><FiCheck /></div>
+                            <h2 className="success-title">Enviado a Red</h2>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: 30 }}>La transferencia está siendo procesada por el Switch Interbancario.</p>
+                            <div className="transfer-button-row">
+                                <button className="btn-back" onClick={() => navigate('/movimientos')}>Ir al Inicio</button>
+                                <button className="btn btn-transfer" style={{ background: 'var(--grad-gold)', color: '#000' }} onClick={downloadReceipt}>
+                                    <FiDownload style={{ marginRight: 8 }} /> Comprobante
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            )}
-
-            {step === 3 && (
-                <div style={styles.card}>
-                    <h2 style={styles.title}>Confirmación</h2>
-                    <h3 style={{ textAlign: "center", marginBottom: 15 }}>Transferencia Interbancaria</h3>
-
-                    <table style={styles.table}>
-                        <tbody>
-                            <tr>
-                                <td>Monto:</td>
-                                <td><b>${Number(amount).toFixed(2)}</b></td>
-                            </tr>
-                            <tr>
-                                <td>Costo:</td>
-                                <td>$0.40 (Aprox)</td>
-                            </tr>
-                            <tr><td colSpan={2} style={styles.sectionTitle}>Origen</td></tr>
-                            <tr><td>Cuenta:</td><td>{fromAccount.number}</td></tr>
-
-                            <tr><td colSpan={2} style={styles.sectionTitle}>Destino</td></tr>
-                            <tr><td>Banco:</td><td>{getBankName(bankBic)}</td></tr>
-                            <tr><td>Beneficiario:</td><td>{toName}</td></tr>
-                            <tr><td>Cuenta:</td><td>{toAccount}</td></tr>
-                        </tbody>
-                    </table>
-
-                    {error && <p style={styles.error}>{error}</p>}
-
-                    <div style={styles.buttonRow}>
-                        <button style={styles.btnCancel} onClick={() => setStep(2)} disabled={loading}>
-                            Atrás
-                        </button>
-                        <button style={styles.btn} onClick={confirmTransfer} disabled={loading}>
-                            {loading ? 'Procesando...' : 'Confirmar'}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {step === 4 && (
-                <div style={styles.card}>
-                    <h2 style={styles.title}>Transacción Exitosa</h2>
-                    <p style={{ textAlign: 'center' }}>La transferencia ha sido enviada a procesamiento.</p>
-                    <div style={styles.buttonRow}>
-                        <button style={styles.btn} onClick={() => navigate('/movimientos')}>Ir a Movimientos</button>
-                        <button style={styles.btn} onClick={downloadReceipt}>📄 Descargar</button>
-                    </div>
-                </div>
-            )}
+            </div>
         </div>
     );
 }
-
-const styles = {
-    card: { background: "#fff", padding: 30, borderRadius: 10, width: "100%", maxWidth: "500px", margin: "0 auto", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" },
-    title: { fontSize: 22, marginBottom: 20, fontWeight: 700, textAlign: 'center' },
-    input: { width: "100%", padding: 12, borderRadius: 6, border: "1px solid #ddd", marginBottom: 15, fontSize: 16 },
-    btn: { background: "#cc8c00", color: "white", padding: "12px 20px", borderRadius: 6, border: "none", cursor: "pointer", marginTop: 10, marginBottom: 10, fontWeight: 600, width: '100%' },
-    btnCancel: { background: "#eee", color: "#333", padding: "12px 20px", borderRadius: 6, border: "none", cursor: "pointer", marginTop: 10, fontWeight: 600, width: '100%' },
-    error: { color: "red", marginBottom: 10, fontSize: 14, background: '#ffebee', padding: 8, borderRadius: 4 },
-    balanceCircle: { textAlign: "center", marginBottom: 20, padding: 10, background: '#f9f9f9', borderRadius: 8 },
-    circleLetter: { width: 50, height: 50, borderRadius: "50%", background: "#e3f2fd", color: '#1565c0', margin: "0 auto 10px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: "bold" },
-    infoBar: { background: "#e3f2fd", padding: 12, borderRadius: 6, marginBottom: 15, fontSize: 13, color: '#0d47a1' },
-    table: { width: "100%", fontSize: 14, margin: "0 auto 20px", textAlign: "left" },
-    sectionTitle: { fontWeight: 700, paddingTop: 10, color: '#666', fontSize: 12, textTransform: 'uppercase' },
-    buttonRow: { display: "flex", gap: 10, marginTop: 20 },
-};
