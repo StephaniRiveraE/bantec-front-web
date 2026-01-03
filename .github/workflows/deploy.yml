@@ -26,115 +26,111 @@ jobs:
           port: 22
           command_timeout: 45m
           script: |
-            echo "📌 Inicio de deploy BANTEC: $(date)"
+            echo "📌 Iniciando despliegue BANTEC: $(date)"
 
-            # 1. Crear swap si no existe (vital para compilación Java/React en VM pequeña)
+            # === 1. VARIABLES Y DIRECTORIOS ===
+            DOMAIN="${{ secrets.DUCKDNS_DOMAIN || 'bantec-bank' }}.duckdns.org"
+            EMAIL="arcbank2@gmail.com"
+            PROJECT_DIR="~/BnacoBantec"
+            CERT_BASE_DIR="$PROJECT_DIR/nginx/certs"
+            CERT_LIVE_DIR="$CERT_BASE_DIR/live/$DOMAIN"
+
+            # === 2. ACTUALIZAR REPOSITORIO ===
+            if [ ! -d $PROJECT_DIR ]; then
+              git clone https://github.com/AlisonTamayo/BnacoBantec.git $PROJECT_DIR
+            fi
+            cd $PROJECT_DIR
+            git fetch origin main
+            git reset --hard origin/main
+            git config --global --add safe.directory "*"
+            chmod +x *.sh
+
+            # === 3. CONFIGURACIÓN DINÁMICA ===
+            # Ajustar nginx.conf al dominio actual
+            ./fix_nginx_conf.sh nginx/nginx.conf "$DOMAIN"
+
+            # Actualizar IP en DuckDNS
+            if [ -n "${{ secrets.DUCKDNS_TOKEN }}" ]; then
+              ./update_duckdns.sh "${{ secrets.DUCKDNS_DOMAIN }}" "${{ secrets.DUCKDNS_TOKEN }}"
+            fi
+
+            # === 4. SWAP Y MEMORIA ===
             if [ ! -f /swapfile ]; then
-              echo "📝 Creando swap de 2GB por seguridad..."
+              echo "📝 Creando swap de 2GB..."
               sudo fallocate -l 2G /swapfile
               sudo chmod 600 /swapfile
               sudo mkswap /swapfile
               sudo swapon /swapfile
             fi
 
-            # 2. Clonar o actualizar repositorio
-            if [ ! -d ~/BnacoBantec ]; then
-              echo "📥 Clonando repositorio BANTEC..."
-              cd ~
-              git clone https://github.com/AlisonTamayo/BnacoBantec.git
-            fi
-
-            cd ~/BnacoBantec
-            echo "🔄 Sincronizando código con la rama main..."
-            git fetch origin main
-            git reset --hard origin/main
-            git config --global --add safe.directory "*"
-
-            # 3. Preparar certificados mTLS (Comunicación con el Switch)
+            # === 5. CERTIFICADOS mTLS (Internos) ===
             echo "🔐 Verificando certificados mTLS..."
-            CERT_SOURCE="~/BnacoBantec/ms-transaccion/src/main/resources/certs"
+            CERT_SOURCE="$PROJECT_DIR/ms-transaccion/src/main/resources/certs"
             TARGET_MTLS="~/bantec_certs"
-            
             if [ ! -f $CERT_SOURCE/bantec-keystore.p12 ]; then
-              echo "🛠️ Generando nuevos certificados mTLS..."
-              chmod +x ~/BnacoBantec/generate-mtls-certs.sh
               ~/BnacoBantec/generate-mtls-certs.sh
             fi
-            
-            # Asegurar que existan para el montaje de Docker volumes
             mkdir -p $TARGET_MTLS
             cp -r $CERT_SOURCE/* $TARGET_MTLS/
             chmod 777 $TARGET_MTLS/*
 
-            # 4. Certificados SSL HTTPS (Let's Encrypt / DuckDNS)
-            echo "🌐 Automatizando SSL para ${{ secrets.DUCKDNS_DOMAIN }}.duckdns.org..."
-            CERT_HOST_DIR="~/BnacoBantec/nginx/certs/live/bantec-bank.duckdns.org"
-            
-            # 4.1 Actualizar IP en DuckDNS si hay token
-            if [ -n "${{ secrets.DUCKDNS_TOKEN }}" ]; then
-              chmod +x ~/BnacoBantec/update_duckdns.sh
-              ~/BnacoBantec/update_duckdns.sh "${{ secrets.DUCKDNS_DOMAIN }}" "${{ secrets.DUCKDNS_TOKEN }}"
-            fi
+            # === 6. CERTIFICADOS SSL (HTTPS PUBLICO) ===
+            echo "🌐 Verificando SSL para $DOMAIN..."
+            mkdir -p $CERT_BASE_DIR
+            mkdir -p "$PROJECT_DIR/nginx/certbot"
 
-            # Asegurar que los directorios existan
-            mkdir -p ~/BnacoBantec/nginx/certs
-            mkdir -p ~/BnacoBantec/nginx/certbot
-
-            # Detectar si el certificado es real o necesita reemplazo
+            # Detectar si necesitamos el certificado real
             NEEDS_CERT=false
-            if [ ! -f $CERT_HOST_DIR/fullchain.pem ]; then
+            if [ ! -f "$CERT_LIVE_DIR/fullchain.pem" ]; then
               NEEDS_CERT=true
             else
-              # Si existe pero es autofirmado (temporal), también necesitamos el real
-              if ! sudo openssl x509 -in $CERT_HOST_DIR/fullchain.pem -noout -issuer | grep -q "Let's Encrypt"; then
-                echo "⚠️ Certificado actual es temporal/autofirmado. Intentando obtener real..."
+              # Si es autofirmado, necesitamos reemplazarlo por Let's Encrypt
+              if ! sudo openssl x509 -in "$CERT_LIVE_DIR/fullchain.pem" -noout -issuer | grep -q "Let's Encrypt"; then
+                echo "⚠️ Certificado actual es DUMMY (autofirmado)."
                 NEEDS_CERT=true
               fi
             fi
 
             if [ "$NEEDS_CERT" = true ]; then
-              echo "🛡️ Iniciando proceso de obtención de certificado real..."
+              echo "🛡️ Intentando obtener certificado real de Let's Encrypt..."
               
-              # Si no hay nada, creamos uno temporal para que Nginx arranque
-              if [ ! -f $CERT_HOST_DIR/fullchain.pem ]; then
-                echo "📝 Creando dummy cert para arranque inicial..."
-                sudo mkdir -p $CERT_HOST_DIR
+              # Crear Dummy Cert si no hay nada (para que Nginx arranque)
+              if [ ! -f "$CERT_LIVE_DIR/fullchain.pem" ]; then
+                mkdir -p "$CERT_LIVE_DIR"
                 sudo openssl req -x509 -nodes -days 7 -newkey rsa:2048 \
-                  -keyout $CERT_HOST_DIR/privkey.pem \
-                  -out $CERT_HOST_DIR/fullchain.pem \
-                  -subj "/C=EC/ST=Pichincha/L=Quito/O=Bantec/CN=bantec-bank.duckdns.org"
+                  -keyout "$CERT_LIVE_DIR/privkey.pem" \
+                  -out "$CERT_LIVE_DIR/fullchain.pem" \
+                  -subj "/C=EC/ST=Pichincha/L=Quito/O=Bantec/CN=$DOMAIN"
               fi
 
-              # Levantamos Nginx para responder al challenge
-              echo "🚀 Arrancando Nginx para validación..."
+              # Levantar Nginx para responder al challenge HTTP-01
               sudo docker-compose -f docker-compose.prod.yml up -d nginx-proxy
+              sleep 5
 
-              echo "📡 Solicitando certificado a Let's Encrypt..."
-              # Borramos el temporal justo antes para que Certbot no se confunda si es posible
-              # Pero Nginx lo necesita para estar arriba. Certbot --webroot no necesita que el puerto 80 esté libre, solo que Nginx sirva /.well-known/
+              # Solicitar certificado (Método Webroot evita detener servicios)
               sudo docker run --rm --name certbot-issuance \
-                -v "$(pwd)/nginx/certs:/etc/letsencrypt" \
-                -v "$(pwd)/nginx/certbot:/var/www/certbot" \
+                -v "$CERT_BASE_DIR:/etc/letsencrypt" \
+                -v "$PROJECT_DIR/nginx/certbot:/var/www/certbot" \
                 certbot/certbot certonly --webroot -w /var/www/certbot \
-                -d bantec-bank.duckdns.org \
-                --email arcbank2@gmail.com \
-                --agree-tos --non-interactive --no-eff-email || echo "❌ Falló Certbot."
+                -d "$DOMAIN" \
+                --email "$EMAIL" \
+                --agree-tos --non-interactive --no-eff-email || \
+                echo "❌ Certbot falló. ¡IMPORTANTE! Verifica que el PUERTO 80 esté ABIERTO en el Firewall de GCP."
 
-              # Si se obtuvo el real, Nginx se recargará al final del script
+              # Si se obtuvo el real, el issuer cambiará en el siguiente despliegue
             fi
 
-            # 5. Despliegue con Docker Compose
-            echo "🧹 Limpieza de imágenes..."
-            sudo docker system prune -f
-
-            echo "🚀 Actualizando y reiniciando todos los servicios..."
+            # === 7. DESPLIEGUE DOCKER ===
+            echo "🚀 Actualizando contenedores..."
             sudo docker-compose -f docker-compose.prod.yml build --no-cache
             sudo docker-compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
 
-            # 6. Recargar Nginx para asegurar que use el certificado más reciente
+            # Limpiar imágenes antiguas para ahorrar espacio
+            sudo docker image prune -f
+
+            # Recargar Nginx para asegurar que tome los nuevos certificados
             sudo docker exec nginx-proxy-bantec nginx -s reload || true
 
             echo "📊 Estado Final:"
             sudo docker ps
-
             echo "✅ Deploy BANTEC completado: $(date)"
