@@ -156,7 +156,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                                         .originatingBankId(codigoBanco)
                                         .build())
                                 .body(SwitchTransferRequest.Body.builder()
-                                        .instructionId(trx.getReferencia())
+                                        .instructionId(java.util.UUID.randomUUID().toString())
                                         .endToEndId("REF-BANTEC-" + trx.getReferencia())
                                         .amount(SwitchTransferRequest.Amount.builder()
                                                 .currency("USD")
