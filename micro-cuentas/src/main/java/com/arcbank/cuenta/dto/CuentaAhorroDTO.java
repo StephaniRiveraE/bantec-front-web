@@ -17,9 +17,9 @@ public class CuentaAhorroDTO {
     private Integer idCliente;
     private Integer idSucursalApertura;
     private Integer idTipoCuenta;
-    
+
     private BigDecimal saldoActual;
-    private BigDecimal saldoDisponible; // Transacciones usará este campo
+    private BigDecimal saldoDisponible;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate fechaApertura;

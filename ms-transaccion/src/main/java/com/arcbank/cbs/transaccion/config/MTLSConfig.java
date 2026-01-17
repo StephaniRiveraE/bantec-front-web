@@ -94,7 +94,6 @@ public class MTLSConfig {
         if (trustStoreLoaded) {
             sslContextBuilder.loadTrustMaterial(trustStore, null);
         } else {
-            // Cargar CAs del sistema si no hay truststore personalizado
             sslContextBuilder.loadTrustMaterial((java.security.KeyStore) null,
                     (org.apache.hc.core5.ssl.TrustStrategy) null);
             log.info("Using system default truststore.");

@@ -14,11 +14,6 @@ import org.springframework.context.annotation.Bean;
 import java.io.IOException;
 import java.lang.reflect.Type;
 
-/**
- * Decoder personalizado SOLO para SwitchClient.
- * Esta clase NO tiene @Configuration para evitar que se aplique globalmente.
- * Solo se aplica a los FeignClients que la referencian explícitamente.
- */
 @Slf4j
 public class SwitchFeignDecoderConfig {
 
@@ -31,9 +26,7 @@ public class SwitchFeignDecoderConfig {
         return new Decoder() {
             @Override
             public Object decode(Response response, Type type) throws IOException {
-                // Solo aplicar lógica especial para SwitchTransferResponse
                 if (!type.getTypeName().contains("SwitchTransferResponse")) {
-                    // Para otros tipos, usar el decoder por defecto de Jackson
                     if (response.body() == null) {
                         return null;
                     }
@@ -72,15 +65,13 @@ public class SwitchFeignDecoderConfig {
                 try {
                     JsonNode rootNode = mapper.readTree(body);
                     SwitchTransferResponse switchResp = mapper.treeToValue(rootNode, SwitchTransferResponse.class);
-                    
-                    // Si HTTP status es 2xx, marcar como exitoso
+
                     if (response.status() >= 200 && response.status() < 300) {
                         if (switchResp.getError() == null || switchResp.getData() != null) {
                             log.info("✅ Switch returned 2xx - marking as success");
                             switchResp.setSuccess(true);
                         }
-                        
-                        // Verificar campos alternativos
+
                         if (rootNode.has("estado")) {
                             String estado = rootNode.get("estado").asText();
                             if (estado.matches("(?i)(COMPLETADA|EXITOSA|PROCESADA|SUCCESS|OK|ACCEPTED)")) {
@@ -97,19 +88,19 @@ public class SwitchFeignDecoderConfig {
                             switchResp.setSuccess(true);
                         }
                     }
-                    
+
                     return switchResp;
-                    
+
                 } catch (Exception e) {
                     log.error("Error parsing Switch response: {} - Body: {}", e.getMessage(), body);
-                    
+
                     if (response.status() >= 200 && response.status() < 300) {
                         log.info("✅ Switch returned 2xx but couldn't parse - treating as success");
                         return SwitchTransferResponse.builder()
                                 .success(true)
                                 .build();
                     }
-                    
+
                     return SwitchTransferResponse.builder()
                             .success(false)
                             .error(SwitchTransferResponse.ErrorBody.builder()

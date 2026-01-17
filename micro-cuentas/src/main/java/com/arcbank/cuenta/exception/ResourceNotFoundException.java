@@ -1,4 +1,4 @@
-package com.arcbank.cuenta.exception; // PAQUETE CORREGIDO
+package com.arcbank.cuenta.exception;
 
 public class ResourceNotFoundException extends RuntimeException {
     public ResourceNotFoundException(String message) {

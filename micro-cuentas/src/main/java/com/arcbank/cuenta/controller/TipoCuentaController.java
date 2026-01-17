@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping("/api/v1/cuentas/tipos-cuenta") // <--- RUTA CORREGIDA
+@RequestMapping("/api/v1/cuentas/tipos-cuenta")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Tipos de Cuenta", description = "Gestión de tipos de cuenta")
@@ -40,7 +40,7 @@ public class TipoCuentaController {
     @Operation(summary = "Actualizar tipo de cuenta")
     @PutMapping("/{id}")
     public ResponseEntity<TipoCuentaAhorroDTO> update(@PathVariable Integer id,
-                                                       @Valid @RequestBody TipoCuentaAhorroRequest request) {
+            @Valid @RequestBody TipoCuentaAhorroRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
 

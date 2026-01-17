@@ -50,17 +50,15 @@ public class SwitchClientService {
 
             HttpEntity<SwitchTransferRequest> entity = new HttpEntity<>(request, headers);
 
-            // Primero obtener la respuesta como String para diagnosticar
             ResponseEntity<String> rawResponse = restTemplate.postForEntity(
                     URI.create(url),
                     entity,
                     String.class);
 
-            log.info("📥 Switch raw response - Status: {}, Body: {}", 
+            log.info("📥 Switch raw response - Status: {}, Body: {}",
                     rawResponse.getStatusCode(), rawResponse.getBody());
 
             if (rawResponse.getBody() == null || rawResponse.getBody().isBlank()) {
-                // Si el HTTP status es 2xx pero no hay body, considerarlo exitoso
                 if (rawResponse.getStatusCode().is2xxSuccessful()) {
                     log.info("✅ Switch returned 2xx with empty body - treating as success");
                     return SwitchTransferResponse.builder()
@@ -70,14 +68,11 @@ public class SwitchClientService {
                 throw new BusinessException("Switch returned empty body with non-2xx status");
             }
 
-            // Parsear la respuesta JSON
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            
+
             SwitchTransferResponse switchResp = mapper.readValue(rawResponse.getBody(), SwitchTransferResponse.class);
-            
-            // Si el HTTP status es 2xx y no hay campo error, considerarlo exitoso
-            // (aunque el campo success sea false por deserialización por defecto)
+
             if (rawResponse.getStatusCode().is2xxSuccessful() && switchResp.getError() == null) {
                 log.info("✅ Switch returned 2xx without error - treating as success");
                 switchResp.setSuccess(true);

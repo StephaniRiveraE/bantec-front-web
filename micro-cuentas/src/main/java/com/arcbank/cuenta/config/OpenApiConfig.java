@@ -1,4 +1,4 @@
-package com.arcbank.cuenta.config; // PAQUETE CORREGIDO (PLURAL)
+package com.arcbank.cuenta.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,11 +18,10 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("BANTEC - Microservicio Cuentas API")
-                        .version("v1") // Coincide con tu ruta /api/v1/...
+                        .version("v1")
                         .description("API para la gestión de cuentas de ahorro, tipos de cuenta y tasas de interés"));
     }
 
-    // Vital para manejar LocalDate y LocalDateTime correctamente en los JSON
     @Bean
     public ObjectMapper objectMapper() {
         return new ObjectMapper()

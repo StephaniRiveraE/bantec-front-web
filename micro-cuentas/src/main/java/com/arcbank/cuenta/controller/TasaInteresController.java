@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping("/api/v1/cuentas/tasas") // <--- RUTA CORREGIDA
+@RequestMapping("/api/v1/cuentas/tasas")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Tasas de Interés", description = "Gestión de tasas de interés")

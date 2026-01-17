@@ -1,5 +1,6 @@
 package com.arcbank.cbs.transaccion.controller;
 
+import com.arcbank.cbs.transaccion.dto.RefoundRequestDTO;
 import com.arcbank.cbs.transaccion.dto.TransaccionRequestDTO;
 import com.arcbank.cbs.transaccion.dto.TransaccionResponseDTO;
 import com.arcbank.cbs.transaccion.service.TransaccionService;
@@ -31,5 +32,12 @@ public class Controller {
     @Operation(summary = "Historial por cuenta (Origen o Destino)")
     public ResponseEntity<List<TransaccionResponseDTO>> listarPorCuenta(@PathVariable Integer idCuenta) {
         return ResponseEntity.ok(transaccionService.obtenerPorCuenta(idCuenta));
+    }
+
+    @PostMapping("/reverso")
+    @Operation(summary = "Solicitar reverso de transacción")
+    public ResponseEntity<Void> solicitarReverso(@Valid @RequestBody RefoundRequestDTO request) {
+        transaccionService.solicitarReverso(request);
+        return ResponseEntity.ok().build();
     }
 }

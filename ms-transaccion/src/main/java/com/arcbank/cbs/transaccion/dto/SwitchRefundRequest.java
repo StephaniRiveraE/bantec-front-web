@@ -1,13 +1,16 @@
 package com.arcbank.cbs.transaccion.dto;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SwitchTransferRequest {
+public class SwitchRefundRequest {
 
     private Header header;
     private Body body;
@@ -27,12 +30,12 @@ public class SwitchTransferRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Body {
-        private String instructionId;
-        private String endToEndId;
-        private Amount amount;
+        private String returnInstructionId;
+        private String originalInstructionId;
+        private String returnReason;
+        private Amount returnAmount;
         private Party debtor;
         private Party creditor;
-        private String remittanceInformation;
     }
 
     @Data
@@ -51,7 +54,5 @@ public class SwitchTransferRequest {
     public static class Party {
         private String name;
         private String accountId;
-        private String accountType;
-        private String targetBankId;
     }
 }

@@ -76,6 +76,14 @@ export async function realizarTransferenciaInterbancaria(payload) {
   });
 }
 
+// Solicitud de reverso
+export async function solicitarReverso(payload) {
+  return await request('/api/transacciones/reverso', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function getBancos() {
   try {
     const response = await request('/api/bancos');
@@ -97,6 +105,7 @@ const bancaApi = {
   getMovimientos,
   realizarTransferencia,
   realizarTransferenciaInterbancaria,
+  solicitarReverso,
   getBancos
 }
 

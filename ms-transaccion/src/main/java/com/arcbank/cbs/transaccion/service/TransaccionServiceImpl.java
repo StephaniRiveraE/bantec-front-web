@@ -14,6 +14,8 @@ import com.arcbank.cbs.transaccion.client.CuentaCliente;
 import com.arcbank.cbs.transaccion.client.SwitchClient;
 import com.arcbank.cbs.transaccion.client.ClienteClient;
 import com.arcbank.cbs.transaccion.dto.SaldoDTO;
+import com.arcbank.cbs.transaccion.dto.RefoundRequestDTO;
+import com.arcbank.cbs.transaccion.dto.SwitchRefundRequest;
 import com.arcbank.cbs.transaccion.dto.SwitchTransferRequest;
 import com.arcbank.cbs.transaccion.dto.SwitchTransferResponse;
 import com.arcbank.cbs.transaccion.dto.TransaccionRequestDTO;
@@ -42,6 +44,15 @@ public class TransaccionServiceImpl implements TransaccionService {
     @Transactional
     public TransaccionResponseDTO crearTransaccion(TransaccionRequestDTO request) {
         log.info("Iniciando transacción Tipo: {} | Ref: {}", request.getTipoOperacion(), request.getReferencia());
+
+        if (request.getReferencia() != null) {
+            var existingTx = transaccionRepository.findByReferencia(request.getReferencia());
+            if (existingTx.isPresent()) {
+                log.warn("⚠️ Transacción duplicada detectada (Ref: {}). Retornando existente.",
+                        request.getReferencia());
+                return mapearADTO(existingTx.get(), null);
+            }
+        }
 
         String tipoOp = request.getTipoOperacion().toUpperCase();
 
@@ -109,7 +120,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                     trx.setIdCuentaDestino(null);
                     trx.setCuentaExterna(request.getCuentaExterna());
                     trx.setIdBancoExterno(request.getIdBancoExterno());
-                    trx.setMonto(montoTotal); // El monto registrado incluye la comisión
+                    trx.setMonto(montoTotal);
                     trx.setDescripcion(request.getDescripcion() + " (Comisión interbancaria $0.45)");
 
                     BigDecimal saldoDebitado = null;
@@ -124,7 +135,6 @@ public class TransaccionServiceImpl implements TransaccionService {
                     String nombreDebtor = "Cliente Bantec";
                     String tipoCuentaDebtor = "SAVINGS";
 
-                    // Intentar obtener detalles del cliente
                     try {
                         Map<String, Object> cuentaInfo = cuentaCliente.obtenerCuenta(request.getIdCuentaOrigen());
                         if (cuentaInfo != null && cuentaInfo.get("idCliente") != null) {
@@ -189,7 +199,6 @@ public class TransaccionServiceImpl implements TransaccionService {
                         if (switchResp == null || !switchResp.isSuccess()) {
                             log.warn("❌ [BANTEC] Switch rechazó transferencia. Response: {}", switchResp);
 
-                            // LÓGICA DE REVERSIÓN (REVIVE)
                             BigDecimal saldoRevertido = procesarSaldo(trx.getIdCuentaOrigen(), montoTotal);
                             log.info("🔄 [BANTEC] Saldo revertido en cuenta {}. Nuevo saldo: {}",
                                     trx.getIdCuentaOrigen(), saldoRevertido);
@@ -215,7 +224,6 @@ public class TransaccionServiceImpl implements TransaccionService {
                         log.error("❌ [BANTEC] Error de comunicación con switch, revirtiendo débito: {}",
                                 e.getMessage());
 
-                        // LÓGICA DE REVERSIÓN (REVIVE)
                         BigDecimal saldoRevertido = procesarSaldo(trx.getIdCuentaOrigen(), montoTotal);
                         log.info("🔄 [BANTEC] Saldo revertido por error técnico en cta {}. Nuevo saldo: {}",
                                 trx.getIdCuentaOrigen(), saldoRevertido);
@@ -392,5 +400,96 @@ public class TransaccionServiceImpl implements TransaccionService {
 
         transaccionRepository.save(trx);
         log.info("✅ Transferencia entrante completada. Ref: {}, Nuevo saldo: {}", instructionId, nuevoSaldo);
+    }
+
+    @Override
+    @Transactional
+    public void solicitarReverso(RefoundRequestDTO requestDTO) {
+        log.info("🔄 Procesando solicitud de reverso para Tx ID: {}", requestDTO.getIdTransaccion());
+
+        Transaccion originalTx = transaccionRepository.findById(requestDTO.getIdTransaccion())
+                .orElseThrow(() -> new BusinessException("Transacción no encontrada"));
+
+        if (!"COMPLETADA".equals(originalTx.getEstado()) && !"EXITOSA".equals(originalTx.getEstado())) {
+            throw new BusinessException("Solo se pueden revertir transacciones completadas.");
+        }
+
+        if (originalTx.getIdTransaccionReversa() != null) {
+            throw new BusinessException("Esta transacción ya fue revertida anteriormente.");
+        }
+
+        String messageId = "MSG-REV-BANTEC-" + System.currentTimeMillis();
+        String creationTime = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
+                .format(java.time.format.DateTimeFormatter.ISO_INSTANT);
+        String returnId = UUID.randomUUID().toString();
+
+        SwitchRefundRequest switchRequest = SwitchRefundRequest.builder()
+                .header(SwitchRefundRequest.Header.builder()
+                        .messageId(messageId)
+                        .creationDateTime(creationTime)
+                        .originatingBankId(codigoBanco)
+                        .build())
+                .body(SwitchRefundRequest.Body.builder()
+                        .returnInstructionId(returnId)
+                        .originalInstructionId(originalTx.getReferencia())
+                        .returnReason(requestDTO.getMotivo())
+                        .returnAmount(SwitchRefundRequest.Amount.builder()
+                                .currency("USD")
+                                .value(originalTx.getMonto())
+                                .build())
+                        .debtor(SwitchRefundRequest.Party.builder()
+                                .name("Cliente Bantec")
+                                .accountId(obtenerNumeroCuenta(originalTx.getIdCuentaOrigen()))
+                                .build())
+                        .creditor(SwitchRefundRequest.Party.builder()
+                                .name(originalTx.getDescripcion())
+                                .accountId(originalTx.getCuentaExterna())
+                                .build())
+                        .build())
+                .build();
+
+        try {
+            log.info("📤 Enviando solicitud de reverso al Switch (pacs.004)...");
+            SwitchTransferResponse response = switchClient.solicitarDevolucion(switchRequest);
+
+            if (response != null && response.isSuccess()) {
+                log.info("✅ Reverso APROBADO por el Switch. Realizando crédito interno...");
+
+                BigDecimal nuevoSaldo = procesarSaldo(originalTx.getIdCuentaOrigen(), originalTx.getMonto());
+
+                originalTx.setEstado("REVERSADA");
+                originalTx.setDescripcion(originalTx.getDescripcion() + " [REVERSADA: " + requestDTO.getMotivo() + "]");
+                transaccionRepository.save(originalTx);
+
+                Transaccion reversaTx = Transaccion.builder()
+                        .referencia(returnId)
+                        .tipoOperacion("DEVOLUCION_RECIBIDA")
+                        .monto(originalTx.getMonto())
+                        .descripcion(
+                                "Devolución de Tx " + originalTx.getIdTransaccion() + ": " + requestDTO.getMotivo())
+                        .canal("WEB")
+                        .idCuentaDestino(originalTx.getIdCuentaOrigen())
+                        .saldoResultante(nuevoSaldo)
+                        .estado("COMPLETADA")
+                        .idTransaccionReversa(originalTx.getIdTransaccion())
+                        .build();
+
+                transaccionRepository.save(reversaTx);
+                log.info("✅ Devolución completada localmente.");
+
+            } else {
+                String errorMsg = (response != null && response.getError() != null)
+                        ? response.getError().getMessage()
+                        : "Rechazo desconocido del Switch";
+                log.warn("❌ Switch rechazó el reverso: {}", errorMsg);
+                throw new BusinessException("El Switch rechazó la devolución: " + errorMsg);
+            }
+
+        } catch (Exception e) {
+            log.error("Error técnico al solicitar reverso: ", e);
+            if (e instanceof BusinessException)
+                throw e;
+            throw new BusinessException("Error de comunicación con el Switch: " + e.getMessage());
+        }
     }
 }

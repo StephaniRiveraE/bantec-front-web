@@ -24,7 +24,6 @@ public class BancosController {
 
     private final SwitchClient switchClient;
 
-    // Lista de bancos hardcodeada (el Switch no provee este endpoint)
     private static final List<Map<String, Object>> BANCOS_DISPONIBLES = List.of(
             Map.of("id", "ARCBANK", "nombre", "Banco Arcbank", "codigo", "ARCBANK"),
             Map.of("id", "NEXUS_BANK", "nombre", "Nexus Bank", "codigo", "NEXUS_BANK"),

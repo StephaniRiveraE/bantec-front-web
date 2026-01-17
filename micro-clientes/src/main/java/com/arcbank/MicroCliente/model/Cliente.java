@@ -22,8 +22,8 @@ public class Cliente {
     @Column(unique = true)
     private String identificacion;
 
-    private String clave; // Contraseña del cliente para banca web/cajero
-    private String nombreCompleto; // Nombre completo del cliente
+    private String clave;
+    private String nombreCompleto;
 
     private LocalDate fechaRegistro;
     private String estado;

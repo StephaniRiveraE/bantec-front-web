@@ -5,9 +5,6 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
-/**
- * Cliente Feign para comunicación con micro-clientes
- */
 @FeignClient(name = "ms-clientes", url = "${app.feign.clientes-url:http://micro-clientes:8080}")
 public interface ClienteClient {
 

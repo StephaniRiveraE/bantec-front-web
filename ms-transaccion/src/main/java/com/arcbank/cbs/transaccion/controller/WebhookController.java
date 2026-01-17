@@ -58,7 +58,6 @@ public class WebhookController {
                         log.info("💰 Solicitud de abono en Bantec: Cta {} | Monto {} | Desde {}", cuentaDestino, monto,
                                         bancoOrigen);
 
-                        // Ejecutar acreditación
                         transaccionService.procesarTransferenciaEntrante(instructionId, cuentaDestino, monto,
                                         bancoOrigen);
 

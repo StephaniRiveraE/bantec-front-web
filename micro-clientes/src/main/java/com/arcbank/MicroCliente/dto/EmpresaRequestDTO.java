@@ -10,7 +10,7 @@ import java.util.List;
 @Setter
 public class EmpresaRequestDTO {
 
-    private ClienteRequestDTO cliente;   // empresa es un cliente tipo E
+    private ClienteRequestDTO cliente;
 
     private String razonSocial;
     private LocalDate fechaConstitucion;

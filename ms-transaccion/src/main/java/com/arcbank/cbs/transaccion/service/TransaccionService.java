@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.arcbank.cbs.transaccion.dto.TransaccionRequestDTO;
 import com.arcbank.cbs.transaccion.dto.TransaccionResponseDTO;
+import com.arcbank.cbs.transaccion.dto.RefoundRequestDTO;
 
 public interface TransaccionService {
 
@@ -16,4 +17,6 @@ public interface TransaccionService {
 
     void procesarTransferenciaEntrante(String instructionId, String cuentaDestino,
             BigDecimal monto, String bancoOrigen);
+
+    void solicitarReverso(RefoundRequestDTO request);
 }

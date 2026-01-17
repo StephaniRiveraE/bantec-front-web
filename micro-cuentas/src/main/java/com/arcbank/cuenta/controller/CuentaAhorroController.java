@@ -17,7 +17,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/cuentas/ahorros") // <--- RUTA CORREGIDA
+@RequestMapping("/api/v1/cuentas/ahorros")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Cuentas de Ahorro", description = "Gestión de cuentas de ahorro")
@@ -50,7 +50,6 @@ public class CuentaAhorroController {
         return ResponseEntity.ok(service.getSaldo(id));
     }
 
-    // Endpoint necesario para integración con Transacciones
     @Operation(summary = "Actualizar saldo (Interno)")
     @PutMapping("/{id}/saldo")
     public ResponseEntity<Void> actualizarSaldo(
