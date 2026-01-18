@@ -112,4 +112,23 @@ public class SwitchFeignDecoderConfig {
             }
         };
     }
+
+    @Bean
+    public feign.codec.ErrorDecoder errorDecoder() {
+        return (methodKey, response) -> {
+            String body = "Unknown Error";
+            try {
+                if (response.body() != null) {
+                    body = Util.toString(response.body().asReader(java.nio.charset.StandardCharsets.UTF_8));
+                }
+            } catch (IOException e) {
+                log.error("Error reading error response body", e);
+            }
+            log.error("🔥 Switch responded with error. Status: {}, Body: {}", response.status(), body);
+
+            // Retornamos una excepción con el cuerpo del error para que el servicio lo
+            // capture
+            return new RuntimeException("Switch Error (" + response.status() + "): " + body);
+        };
+    }
 }
