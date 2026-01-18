@@ -36,7 +36,7 @@ public class SwitchClientService {
 
     public SwitchTransferResponse enviarTransferencia(SwitchTransferRequest request) {
         try {
-            String url = switchUrl + "/api/v1/transacciones";
+            String url = switchUrl + "/transacciones";
             log.info("🚀 Sending transfer to Switch: {}", url);
 
             if (request.getBody().getInstructionId() == null) {

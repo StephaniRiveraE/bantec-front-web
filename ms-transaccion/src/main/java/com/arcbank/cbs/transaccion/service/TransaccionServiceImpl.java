@@ -373,8 +373,53 @@ public class TransaccionServiceImpl implements TransaccionService {
                 bancoOrigen, cuentaDestino, monto);
 
         Integer idCuentaDestino = obtenerIdCuentaPorNumero(cuentaDestino);
+
+        // RULE < 48h: Initiate return if account not found
         if (idCuentaDestino == null) {
-            throw new BusinessException("Cuenta destino no encontrada en Bantec: " + cuentaDestino);
+            log.warn("❌ Cuenta destino {} no encontrada. Iniciando devolución automática (Regla < 48h).",
+                    cuentaDestino);
+
+            String messageId = "MSG-RET-AUTO-" + System.currentTimeMillis();
+            String creationTime = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
+                    .format(java.time.format.DateTimeFormatter.ISO_INSTANT);
+            String returnId = UUID.randomUUID().toString();
+
+            SwitchRefundRequest switchRequest = SwitchRefundRequest.builder()
+                    .header(SwitchRefundRequest.Header.builder()
+                            .messageId(messageId)
+                            .creationDateTime(creationTime)
+                            .originatingBankId(codigoBanco)
+                            .build())
+                    .body(SwitchRefundRequest.Body.builder()
+                            .returnInstructionId(returnId)
+                            .originalInstructionId(instructionId)
+                            .returnReason("AC04") // Closed Account / Account Number Does Not Exist
+                            .returnAmount(SwitchRefundRequest.Amount.builder()
+                                    .currency("USD")
+                                    .value(monto)
+                                    .build())
+                            .debtor(SwitchRefundRequest.Party.builder()
+                                    .name("Bantec System")
+                                    .accountId(cuentaDestino) // Account that doesn't exist
+                                    .build())
+                            .creditor(SwitchRefundRequest.Party.builder()
+                                    .name("Unknown Origin")
+                                    .accountId("UNKNOWN")
+                                    .build())
+                            .build())
+                    .build();
+
+            try {
+                SwitchTransferResponse response = switchClient.solicitarDevolucion(switchRequest);
+                if (response.isSuccess()) {
+                    log.info("✅ Devolución automática iniciada exitosamente. ReturnId: {}", returnId);
+                } else {
+                    log.error("❌ Falló el inicio de la devolución automática: {}", response.getError());
+                }
+            } catch (Exception e) {
+                log.error("❌ Error técnico enviando devolución automática: {}", e.getMessage());
+            }
+            return; // Stop processing
         }
 
         if (transaccionRepository.findByReferencia(instructionId).isPresent()) {
@@ -400,6 +445,62 @@ public class TransaccionServiceImpl implements TransaccionService {
 
         transaccionRepository.save(trx);
         log.info("✅ Transferencia entrante completada. Ref: {}, Nuevo saldo: {}", instructionId, nuevoSaldo);
+    }
+
+    @Override
+    @Transactional
+    public void procesarDevolucionEntrante(SwitchRefundRequest request) {
+        String originalId = request.getBody().getOriginalInstructionId();
+        log.info("🔙 Procesando devolución entrante para Tx Original: {}", originalId);
+
+        Transaccion originalTx = transaccionRepository.findByReferencia(originalId)
+                .orElse(null);
+
+        if (originalTx == null) {
+            log.error("❌ Transacción original no encontrada para devolución: {}", originalId);
+            throw new BusinessException("Transacción original no encontrada");
+        }
+
+        // We expect originalTx to be TRANSFERENCIA_SALIDA (money went out, now coming
+        // back)
+        if (!"TRANSFERENCIA_SALIDA".equals(originalTx.getTipoOperacion())) {
+            log.warn("⚠️ Recibida devolución para una transacción que no es de SALIDA: {}",
+                    originalTx.getTipoOperacion());
+            // Proceed anyway if it makes sense, but strictly returns credit usually applies
+            // to debit ops.
+        }
+
+        if ("REVERSADA".equals(originalTx.getEstado()) || "DEVUELTA".equals(originalTx.getEstado())) {
+            log.warn("⚠️ Transacción ya marcada como devuelta.");
+            return;
+        }
+
+        BigDecimal amount = request.getBody().getReturnAmount().getValue();
+        Integer idCuentaCliente = originalTx.getIdCuentaOrigen();
+
+        // Credit the customer back
+        BigDecimal nuevoSaldo = procesarSaldo(idCuentaCliente, amount);
+
+        // Update original Tx state
+        originalTx.setEstado("DEVUELTA");
+        originalTx.setDescripcion(originalTx.getDescripcion() + " [DEVUELTA]");
+        transaccionRepository.save(originalTx);
+
+        // Create Record for Return
+        Transaccion returnTx = Transaccion.builder()
+                .referencia(request.getBody().getReturnInstructionId())
+                .tipoOperacion("DEVOLUCION_RECIBIDA")
+                .monto(amount)
+                .idCuentaDestino(idCuentaCliente)
+                .saldoResultante(nuevoSaldo)
+                .descripcion("Devolución recibida: " + request.getBody().getReturnReason())
+                .canal("SWITCH")
+                .estado("COMPLETADA")
+                .idTransaccionReversa(originalTx.getIdTransaccion())
+                .build();
+
+        transaccionRepository.save(returnTx);
+        log.info("✅ Devolución procesada exitosamente. Cliente acreditado.");
     }
 
     @Override

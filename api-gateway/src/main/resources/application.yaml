@@ -77,6 +77,18 @@ spring:
           predicates:
             - Path=/api/transacciones/**
 
+        # RUTA 7.1: WEBHOOKS INCOMING
+        - id: transacciones-incoming-service
+          uri: http://ms-transaccion:8080
+          predicates:
+            - Path=/api/incoming/**
+
+        # RUTA 7.2: WEBHOOKS CORE
+        - id: transacciones-core-service
+          uri: http://ms-transaccion:8080
+          predicates:
+            - Path=/api/core/**
+
         # RUTA 8: BANCOS
         - id: bancos-service
           uri: http://ms-transaccion:8080

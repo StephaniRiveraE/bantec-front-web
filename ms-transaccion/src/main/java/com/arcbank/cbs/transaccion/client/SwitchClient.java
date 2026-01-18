@@ -17,7 +17,7 @@ import com.arcbank.cbs.transaccion.dto.SwitchTransferResponse;
         com.arcbank.cbs.transaccion.config.SwitchFeignDecoderConfig.class })
 public interface SwitchClient {
 
-    @PostMapping("/api/v1/transacciones")
+    @PostMapping("/transacciones")
     SwitchTransferResponse enviarTransferencia(@RequestBody SwitchTransferRequest request);
 
     @GetMapping("/api/v1/red/bancos")
@@ -26,6 +26,6 @@ public interface SwitchClient {
     @GetMapping("/api/v2/transfers/health")
     Map<String, String> healthCheck();
 
-    @PostMapping("/api/v1/devoluciones")
+    @PostMapping("/transacciones/devoluciones")
     SwitchTransferResponse solicitarDevolucion(@RequestBody SwitchRefundRequest request);
 }
