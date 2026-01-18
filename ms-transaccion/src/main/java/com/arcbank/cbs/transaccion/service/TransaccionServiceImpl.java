@@ -515,6 +515,7 @@ public class TransaccionServiceImpl implements TransaccionService {
 
         String messageId = "MSG-REV-BANTEC-" + System.currentTimeMillis();
         String creationTime = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
+                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
                 .format(java.time.format.DateTimeFormatter.ISO_INSTANT);
         String returnId = UUID.randomUUID().toString();
 

@@ -18,6 +18,15 @@ import java.lang.reflect.Type;
 public class SwitchFeignDecoderConfig {
 
     @Bean
+    public feign.RequestInterceptor requestInterceptor(
+            @org.springframework.beans.factory.annotation.Value("${app.switch.apikey}") String apiKey) {
+        return requestTemplate -> {
+            requestTemplate.header("apikey", apiKey);
+            log.debug("🔑 Añadiendo header apikey: {}", apiKey);
+        };
+    }
+
+    @Bean
     public Decoder feignDecoder() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
