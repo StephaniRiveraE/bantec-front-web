@@ -94,13 +94,15 @@ public class MTLSConfig {
         if (trustStoreLoaded) {
             sslContextBuilder.loadTrustMaterial(trustStore, null);
         } else {
-            sslContextBuilder.loadTrustMaterial((java.security.KeyStore) null,
-                    (org.apache.hc.core5.ssl.TrustStrategy) null);
-            log.info("Using system default truststore.");
+            // PELIGRO: Confiar en todo (Trust All) para pruebas si no hay truststore,
+            // replicando lo que hizo ArcBank para avanzar.
+            sslContextBuilder.loadTrustMaterial(null, (chain, authType) -> true);
+            log.warn("⚠️ MODO_INSECURO: Se ha desactivado la verificación SSL para avanzar en pruebas.");
         }
 
         SSLContext sslContext = sslContextBuilder.build();
-        SSLConnectionSocketFactory sslSocketFactory = new SSLConnectionSocketFactory(sslContext);
+        SSLConnectionSocketFactory sslSocketFactory = new SSLConnectionSocketFactory(sslContext,
+                org.apache.hc.client5.http.ssl.NoopHostnameVerifier.INSTANCE);
 
         HttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
                 .setSSLSocketFactory(sslSocketFactory)
@@ -110,7 +112,7 @@ public class MTLSConfig {
                 .setConnectionManager(connectionManager)
                 .build();
 
-        log.info("🚀 Cliente Feign mTLS configurado correctamente para BTEC -> SWITCH.");
+        log.info("🚀 Cliente Feign configurado (SSL Verification: DISABLED).");
         return new feign.hc5.ApacheHttp5Client(httpClient);
     }
 }

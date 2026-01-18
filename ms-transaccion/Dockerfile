@@ -23,6 +23,9 @@ RUN mvn clean package -DskipTests
 # -------------------------------------------------------------------
 FROM eclipse-temurin:21-jre-alpine
 
+# Instalar certificados CA actualizados para evitar errores de SSL con Let's Encrypt
+RUN apk add --no-cache ca-certificates
+
 WORKDIR /app
 
 # Copiamos solo el JAR generado en la etapa anterior
