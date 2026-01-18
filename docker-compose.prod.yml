@@ -50,8 +50,8 @@ services:
       dockerfile: Dockerfile
     container_name: api-gateway-bantec
     # Puerto solo expuesto internamente, Nginx hace el proxy
-    # ports:
-    #   - "8080:8080"
+    ports:
+      - "8080:8080"
     expose:
       - "8080"
     depends_on:
