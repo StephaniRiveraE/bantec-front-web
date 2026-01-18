@@ -399,14 +399,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                                     .currency("USD")
                                     .value(monto)
                                     .build())
-                            .debtor(SwitchRefundRequest.Party.builder()
-                                    .name("Bantec System")
-                                    .accountId(cuentaDestino) // Account that doesn't exist
-                                    .build())
-                            .creditor(SwitchRefundRequest.Party.builder()
-                                    .name("Unknown Origin")
-                                    .accountId("UNKNOWN")
-                                    .build())
+
                             .build())
                     .build();
 

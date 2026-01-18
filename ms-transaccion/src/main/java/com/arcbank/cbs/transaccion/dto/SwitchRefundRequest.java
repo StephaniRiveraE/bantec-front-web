@@ -41,12 +41,4 @@ public class SwitchRefundRequest {
         private BigDecimal value;
     }
 
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class Party {
-        private String name;
-        private String accountId;
-    }
 }
