@@ -539,14 +539,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                                 .currency("USD")
                                 .value(originalTx.getMonto())
                                 .build())
-                        .debtor(SwitchRefundRequest.Party.builder()
-                                .name("Cliente Bantec")
-                                .accountId(obtenerNumeroCuenta(originalTx.getIdCuentaOrigen()))
-                                .build())
-                        .creditor(SwitchRefundRequest.Party.builder()
-                                .name(originalTx.getDescripcion())
-                                .accountId(originalTx.getCuentaExterna())
-                                .build())
+
                         .build())
                 .build();
 
