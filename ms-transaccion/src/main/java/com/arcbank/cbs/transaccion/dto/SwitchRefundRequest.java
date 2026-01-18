@@ -29,8 +29,7 @@ public class SwitchRefundRequest {
         private String originalInstructionId;
         private String returnReason;
         private Amount returnAmount;
-        private Party debtor;
-        private Party creditor;
+
     }
 
     @Data

@@ -94,8 +94,7 @@ public class MTLSConfig {
         if (trustStoreLoaded) {
             sslContextBuilder.loadTrustMaterial(trustStore, null);
         } else {
-            // PELIGRO: Confiar en todo (Trust All) para pruebas si no hay truststore,
-            // replicando lo que hizo ArcBank para avanzar.
+
             sslContextBuilder.loadTrustMaterial(null, (chain, authType) -> true);
             log.warn("⚠️ MODO_INSECURO: Se ha desactivado la verificación SSL para avanzar en pruebas.");
         }
