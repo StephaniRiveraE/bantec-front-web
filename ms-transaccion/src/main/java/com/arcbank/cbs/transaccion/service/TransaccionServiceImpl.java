@@ -113,15 +113,14 @@ public class TransaccionServiceImpl implements TransaccionService {
                     if (request.getCuentaExterna() == null || request.getCuentaExterna().isBlank())
                         throw new BusinessException("Falta cuenta destino externa para transferencia interbancaria.");
 
-                    BigDecimal comision = new BigDecimal("0.45");
-                    BigDecimal montoTotal = request.getMonto().add(comision);
+                    BigDecimal montoTotal = request.getMonto();
 
                     trx.setIdCuentaOrigen(request.getIdCuentaOrigen());
                     trx.setIdCuentaDestino(null);
                     trx.setCuentaExterna(request.getCuentaExterna());
                     trx.setIdBancoExterno(request.getIdBancoExterno());
                     trx.setMonto(montoTotal);
-                    trx.setDescripcion(request.getDescripcion() + " (Comisión interbancaria $0.45)");
+                    trx.setDescripcion(request.getDescripcion());
 
                     BigDecimal saldoDebitado = null;
                     try {
@@ -147,6 +146,18 @@ public class TransaccionServiceImpl implements TransaccionService {
                     } catch (Exception e) {
                         log.warn("No se pudo obtener detalle completo del cliente/cuenta: {}", e.getMessage());
                     }
+
+                    // [FIX] Forzamos UUID para la referencia para cumplir con el requisito del
+                    // Switch (InstructionId debe ser UUID)
+                    // Si usamos una referencia de texto (ej: "Pago Renta"), el Switch fallará al
+                    // intentar el reverso.
+                    trx.setReferencia(UUID.randomUUID().toString());
+
+                    // [FIX] Forzamos UUID para la referencia para cumplir con el requisito del
+                    // Switch (InstructionId debe ser UUID)
+                    // Si usamos una referencia de texto (ej: "Pago Renta"), el Switch fallará al
+                    // intentar el reverso.
+                    trx.setReferencia(UUID.randomUUID().toString());
 
                     try {
                         log.info("🚀 [BANTEC] Iniciando transferencia al switch: {} -> {}", numeroCuentaOrigen,

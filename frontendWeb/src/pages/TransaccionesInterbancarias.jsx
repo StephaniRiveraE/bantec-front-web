@@ -99,9 +99,9 @@ export default function TransaccionesInterbancarias() {
             await realizarTransferenciaInterbancaria(request);
             addTransaction({
                 accId: fromAccId,
-                amount: -(Number(amount) + 0.45),
+                amount: -(Number(amount)),
                 tipo: 'TRANSFERENCIA_SALIDA',
-                desc: `Transf. Interbancaria a ${toName} (Incl. $0.45 comisión)`,
+                desc: `Transf. Interbancaria a ${toName}`,
                 fecha: new Date().toISOString()
             });
             // Sincronización automática con el backend para reflejar el saldo real
@@ -115,11 +115,9 @@ export default function TransaccionesInterbancarias() {
     };
 
     const downloadReceipt = () => {
-        const comision = 0.45;
-        const total = Number(amount) + comision;
+        const total = Number(amount);
         const text = `TRANSFERENCIA INTERBANCARIA BANTEC\n\n` +
             `Monto Transferido: $${Number(amount).toFixed(2)}\n` +
-            `Comisión Interbancaria: $${comision.toFixed(2)}\n` +
             `Total Debitado: $${total.toFixed(2)}\n\n` +
             `Desde cuenta: ${fromAccount.number}\n` +
             `Destino: ${getBankName(bankBic)} (${bankBic})\n` +
@@ -239,7 +237,7 @@ export default function TransaccionesInterbancarias() {
                                 </div>
                                 <div className="summary-item">
                                     <span className="summary-label">Comisión</span>
-                                    <span className="summary-value">$0.45</span>
+                                    <span className="summary-value">$0.00</span>
                                 </div>
                                 <div className="summary-item">
                                     <span className="summary-label">Destino</span>
