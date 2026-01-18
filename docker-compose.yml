@@ -31,8 +31,8 @@ services:
   db-cuentas:
     image: postgres:17
     container_name: db-cuentas-bantec
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432" # Puerto cerrado por seguridad
     environment:
       POSTGRES_DB: db_cuentas
       POSTGRES_USER: postgres
@@ -73,8 +73,8 @@ services:
   db-clientes:
     image: postgres:17
     container_name: db-clientes-bantec
-    ports:
-      - "5433:5432"
+    # ports:
+    #   - "5433:5432" # Puerto cerrado por seguridad
     environment:
       POSTGRES_DB: microcliente
       POSTGRES_USER: postgres
@@ -121,8 +121,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: db_transacciones
-    ports:
-      - "5434:5432"
+    # ports:
+    #   - "5434:5432" # Puerto cerrado por seguridad
     volumes:
       - postgres_data_transacciones:/var/lib/postgresql/data
       - ./ms-transaccion/init.sql:/docker-entrypoint-initdb.d/init.sql

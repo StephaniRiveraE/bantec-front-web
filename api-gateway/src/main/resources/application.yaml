@@ -14,18 +14,18 @@ spring:
               - "http://localhost:3000"
               - "http://localhost:3001"
               # IP Externa VM Bantec
-              - "http://35.209.79.193:3000"
-              - "http://35.209.79.193:3001"
-              - "http://35.209.79.193"
-              - "https://35.209.79.193"
-              - "https://35.209.79.193:3000"
-              - "https://35.209.79.193:3001"
+              - "http://35.208.102.103:3000"
+              - "http://35.208.102.103:3001"
+              - "http://35.208.102.103"
+              - "https://35.208.102.103"
+              - "https://35.208.102.103:3000"
+              - "https://35.208.102.103:3001"
               # HTTPS DuckDNS domain
               - "https://bantec-bank.duckdns.org"
               - "https://bantec-bank.duckdns.org:8443"
               # HTTPS sslip.io domains
-              - "https://bantec.35-209-79-193.sslip.io"
-              - "https://bantec.35-209-79-193.sslip.io:8443"
+              - "https://bantec.35-208-102-103.sslip.io"
+              - "https://bantec.35-208-102-103.sslip.io:8443"
             allowedMethods:
               - GET
               - POST
