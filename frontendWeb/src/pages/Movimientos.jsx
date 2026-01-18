@@ -375,6 +375,7 @@ export default function Movimientos() {
           border: 1px solid #ddd;
           border-radius: 6px;
           font-size: 1rem;
+          color: #333; /* Color negro explícito para textos */
         }
         .refund-textarea { resize: vertical; }
         .req { color: red; }
