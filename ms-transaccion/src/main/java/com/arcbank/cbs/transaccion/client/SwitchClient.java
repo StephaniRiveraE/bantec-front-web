@@ -12,7 +12,7 @@ import com.arcbank.cbs.transaccion.dto.SwitchTransferRequest;
 import com.arcbank.cbs.transaccion.dto.SwitchRefundRequest;
 import com.arcbank.cbs.transaccion.dto.SwitchTransferResponse;
 
-@FeignClient(name = "digiconecu-switch", url = "${app.switch.network-url:https://switch-digiconecu.duckdns.org}", configuration = {
+@FeignClient(name = "digiconecu-switch", url = "${app.switch.network-url:http://34.16.106.7:8000}", configuration = {
         com.arcbank.cbs.transaccion.config.MTLSConfig.class,
         com.arcbank.cbs.transaccion.config.SwitchFeignDecoderConfig.class })
 public interface SwitchClient {

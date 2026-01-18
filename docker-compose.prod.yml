@@ -191,9 +191,9 @@ services:
       SERVER_PORT: 8080
       CUENTAS_URL: http://micro-cuentas:8081
       CLIENTES_URL: http://micro-clientes:8080
-      # Switch Interbancario Kong Gateway
-      APP_SWITCH_URL: https://switch-digiconecu.duckdns.org/api/v2/switch/transfers
-      APP_SWITCH_NETWORK_URL: https://switch-digiconecu.duckdns.org
+      # Switch Interbancario Kong Gateway (ORDEN UNIVERSAL: HTTP :8000)
+      APP_SWITCH_URL: http://34.16.106.7:8000/api/v2/switch/transfers
+      APP_SWITCH_NETWORK_URL: http://34.16.106.7:8000
       APP_SWITCH_APIKEY: BANTEC_SECRET_KEY_2025
       MTLS_ENABLED: false
       MTLS_KEYSTORE_PATH: file:/app/certs/bantec-keystore.p12
