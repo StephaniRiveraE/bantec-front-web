@@ -138,6 +138,9 @@ public class TransaccionServiceImpl implements TransaccionService {
                         Map<String, Object> cuentaInfo = cuentaCliente.obtenerCuenta(request.getIdCuentaOrigen());
                         if (cuentaInfo != null && cuentaInfo.get("idCliente") != null) {
                             Integer idCliente = (Integer) cuentaInfo.get("idCliente");
+                            // [FIX] Forzamos UUID para la referencia para cumplir con el requisito del
+                            // Switch (InstructionId debe ser UUID)
+                            trx.setReferencia(UUID.randomUUID().toString());
                             Map<String, Object> clienteInfo = clienteClient.obtenerCliente(idCliente);
                             if (clienteInfo != null && clienteInfo.get("nombre") != null) {
                                 nombreDebtor = clienteInfo.get("nombre").toString();
@@ -147,24 +150,13 @@ public class TransaccionServiceImpl implements TransaccionService {
                         log.warn("No se pudo obtener detalle completo del cliente/cuenta: {}", e.getMessage());
                     }
 
-                    // [FIX] Forzamos UUID para la referencia para cumplir con el requisito del
-                    // Switch (InstructionId debe ser UUID)
-                    // Si usamos una referencia de texto (ej: "Pago Renta"), el Switch fallará al
-                    // intentar el reverso.
-                    trx.setReferencia(UUID.randomUUID().toString());
-
-                    // [FIX] Forzamos UUID para la referencia para cumplir con el requisito del
-                    // Switch (InstructionId debe ser UUID)
-                    // Si usamos una referencia de texto (ej: "Pago Renta"), el Switch fallará al
-                    // intentar el reverso.
-                    trx.setReferencia(UUID.randomUUID().toString());
-
                     try {
                         log.info("🚀 [BANTEC] Iniciando transferencia al switch: {} -> {}", numeroCuentaOrigen,
                                 request.getCuentaExterna());
 
-                        String messageId = "MSG-BANTEC-" + System.currentTimeMillis();
+                        String messageId = UUID.randomUUID().toString();
                         String creationTime = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
+                                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
                                 .format(java.time.format.DateTimeFormatter.ISO_INSTANT);
 
                         String beneficiario = request.getBeneficiario() != null ? request.getBeneficiario()
@@ -524,7 +516,7 @@ public class TransaccionServiceImpl implements TransaccionService {
             throw new BusinessException("Esta transacción ya fue revertida anteriormente.");
         }
 
-        String messageId = "MSG-REV-BANTEC-" + System.currentTimeMillis();
+        String messageId = UUID.randomUUID().toString();
         String creationTime = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
                 .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
                 .format(java.time.format.DateTimeFormatter.ISO_INSTANT);
