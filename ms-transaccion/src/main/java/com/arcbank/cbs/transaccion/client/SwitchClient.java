@@ -12,12 +12,12 @@ import com.arcbank.cbs.transaccion.dto.SwitchTransferRequest;
 import com.arcbank.cbs.transaccion.dto.SwitchRefundRequest;
 import com.arcbank.cbs.transaccion.dto.SwitchTransferResponse;
 
-@FeignClient(name = "digiconecu-switch", url = "${app.switch.network-url:http://3.140.230.212:8000}", configuration = {
+@FeignClient(name = "digiconecu-switch", url = "${app.switch.network-url:https://switch-digiconecu.duckdns.org}", configuration = {
         com.arcbank.cbs.transaccion.config.MTLSConfig.class,
         com.arcbank.cbs.transaccion.config.SwitchFeignDecoderConfig.class })
 public interface SwitchClient {
 
-    @PostMapping("/transacciones")
+    @PostMapping("/api/v2/switch/transfers")
     SwitchTransferResponse enviarTransferencia(@RequestBody SwitchTransferRequest request);
 
     @GetMapping("/api/v1/red/bancos")
@@ -26,6 +26,6 @@ public interface SwitchClient {
     @GetMapping("/api/v2/transfers/health")
     Map<String, String> healthCheck();
 
-    @PostMapping("/transacciones/devoluciones")
+    @PostMapping("/api/v2/switch/transfers/return")
     SwitchTransferResponse solicitarDevolucion(@RequestBody SwitchRefundRequest request);
 }
