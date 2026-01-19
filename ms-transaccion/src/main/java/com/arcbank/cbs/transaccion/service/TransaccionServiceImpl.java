@@ -442,6 +442,13 @@ public class TransaccionServiceImpl implements TransaccionService {
     @Override
     @Transactional
     public void procesarDevolucionEntrante(SwitchRefundRequest request) {
+        // EVITAR PROCESAR NUESTRAS PROPIAS SOLICITUDES (ECHO)
+        if (request.getHeader().getOriginatingBankId() != null &&
+                request.getHeader().getOriginatingBankId().equalsIgnoreCase(codigoBanco)) {
+            log.info("ℹ️ Ignorando Devolución originada por nosotros mismos (Echo/Confirmación).");
+            return;
+        }
+
         String originalId = request.getBody().getOriginalInstructionId();
         log.info("🔙 Procesando devolución entrante para Tx Original: {}", originalId);
 
