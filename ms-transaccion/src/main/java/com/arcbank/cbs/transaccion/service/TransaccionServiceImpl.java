@@ -165,8 +165,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                                         .originatingBankId(codigoBanco)
                                         .build())
                                 .body(SwitchTransferRequest.Body.builder()
-                                        .instructionId(trx.getReferencia()) // Usamos la Referencia para poder
-                                                                            // rastrearla después
+                                        .instructionId(trx.getReferencia())
                                         .endToEndId("REF-BANTEC-" + trx.getReferencia())
                                         .amount(SwitchTransferRequest.Amount.builder()
                                                 .currency("USD")
@@ -375,7 +374,6 @@ public class TransaccionServiceImpl implements TransaccionService {
 
         Integer idCuentaDestino = obtenerIdCuentaPorNumero(cuentaDestino);
 
-        // RULE < 48h: Initiate return if account not found
         if (idCuentaDestino == null) {
             log.warn("❌ Cuenta destino {} no encontrada. Iniciando devolución automática (Regla < 48h).",
                     cuentaDestino);
@@ -394,7 +392,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                     .body(SwitchRefundRequest.Body.builder()
                             .returnInstructionId(returnId)
                             .originalInstructionId(instructionId)
-                            .returnReason("AC04") // Closed Account / Account Number Does Not Exist
+                            .returnReason("AC04")
                             .returnAmount(SwitchRefundRequest.Amount.builder()
                                     .currency("USD")
                                     .value(monto)
@@ -413,7 +411,7 @@ public class TransaccionServiceImpl implements TransaccionService {
             } catch (Exception e) {
                 log.error("❌ Error técnico enviando devolución automática: {}", e.getMessage());
             }
-            return; // Stop processing
+            return;
         }
 
         if (transaccionRepository.findByReferencia(instructionId).isPresent()) {
@@ -455,13 +453,9 @@ public class TransaccionServiceImpl implements TransaccionService {
             throw new BusinessException("Transacción original no encontrada");
         }
 
-        // We expect originalTx to be TRANSFERENCIA_SALIDA (money went out, now coming
-        // back)
         if (!"TRANSFERENCIA_SALIDA".equals(originalTx.getTipoOperacion())) {
             log.warn("⚠️ Recibida devolución para una transacción que no es de SALIDA: {}",
                     originalTx.getTipoOperacion());
-            // Proceed anyway if it makes sense, but strictly returns credit usually applies
-            // to debit ops.
         }
 
         if ("REVERSADA".equals(originalTx.getEstado()) || "DEVUELTA".equals(originalTx.getEstado())) {
@@ -472,15 +466,12 @@ public class TransaccionServiceImpl implements TransaccionService {
         BigDecimal amount = request.getBody().getReturnAmount().getValue();
         Integer idCuentaCliente = originalTx.getIdCuentaOrigen();
 
-        // Credit the customer back
         BigDecimal nuevoSaldo = procesarSaldo(idCuentaCliente, amount);
 
-        // Update original Tx state
         originalTx.setEstado("DEVUELTA");
         originalTx.setDescripcion(originalTx.getDescripcion() + " [DEVUELTA]");
         transaccionRepository.save(originalTx);
 
-        // Create Record for Return
         Transaccion returnTx = Transaccion.builder()
                 .referencia(request.getBody().getReturnInstructionId())
                 .tipoOperacion("DEVOLUCION_RECIBIDA")
@@ -539,6 +530,11 @@ public class TransaccionServiceImpl implements TransaccionService {
 
         try {
             log.info("📤 Enviando solicitud de reverso al Switch (pacs.004)...");
+
+            String motivoIso = mapearCodigoErrorInternalToISO(requestDTO.getMotivo());
+
+            switchRequest.getBody().setReturnReason(motivoIso);
+
             SwitchTransferResponse response = switchClient.solicitarDevolucion(switchRequest);
 
             if (response != null && response.isSuccess()) {
@@ -547,7 +543,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                 BigDecimal nuevoSaldo = procesarSaldo(originalTx.getIdCuentaOrigen(), originalTx.getMonto());
 
                 originalTx.setEstado("REVERSADA");
-                originalTx.setDescripcion(originalTx.getDescripcion() + " [REVERSADA: " + requestDTO.getMotivo() + "]");
+                originalTx.setDescripcion(originalTx.getDescripcion() + " [REVERSADA: " + motivoIso + "]");
                 transaccionRepository.save(originalTx);
 
                 Transaccion reversaTx = Transaccion.builder()
@@ -555,7 +551,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                         .tipoOperacion("DEVOLUCION_RECIBIDA")
                         .monto(originalTx.getMonto())
                         .descripcion(
-                                "Devolución de Tx " + originalTx.getIdTransaccion() + ": " + requestDTO.getMotivo())
+                                "Devolución de Tx " + originalTx.getIdTransaccion() + ": " + motivoIso)
                         .canal("WEB")
                         .idCuentaDestino(originalTx.getIdCuentaOrigen())
                         .saldoResultante(nuevoSaldo)
@@ -585,5 +581,24 @@ public class TransaccionServiceImpl implements TransaccionService {
     @Override
     public java.util.List<java.util.Map<String, String>> obtenerMotivosDevolucion() {
         return switchClient.obtenerMotivosDevolucion();
+    }
+
+    private String mapearCodigoErrorInternalToISO(String codigoInterno) {
+        if (codigoInterno == null)
+            return "MS03";
+
+        switch (codigoInterno.trim().toUpperCase()) {
+            case "TECH":
+                return "MS03";
+            case "CUENTA_INVALIDA":
+                return "AC03";
+            case "SALDO_INSUFICIENTE":
+                return "AM04";
+            case "DUPLICADO":
+                return "MD01";
+            default:
+
+                return "MS03";
+        }
     }
 }
