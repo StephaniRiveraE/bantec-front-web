@@ -151,8 +151,9 @@ public class TransaccionServiceImpl implements TransaccionService {
                         log.info("🚀 [BANTEC] Iniciando transferencia al switch: {} -> {}", numeroCuentaOrigen,
                                 request.getCuentaExterna());
 
-                        String messageId = "MSG-BANTEC-" + System.currentTimeMillis();
+                        String messageId = UUID.randomUUID().toString();
                         String creationTime = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
+                                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
                                 .format(java.time.format.DateTimeFormatter.ISO_INSTANT);
 
                         String beneficiario = request.getBeneficiario() != null ? request.getBeneficiario()
