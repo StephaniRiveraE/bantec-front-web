@@ -138,9 +138,6 @@ public class TransaccionServiceImpl implements TransaccionService {
                         Map<String, Object> cuentaInfo = cuentaCliente.obtenerCuenta(request.getIdCuentaOrigen());
                         if (cuentaInfo != null && cuentaInfo.get("idCliente") != null) {
                             Integer idCliente = (Integer) cuentaInfo.get("idCliente");
-                            // [FIX] Forzamos UUID para la referencia para cumplir con el requisito del
-                            // Switch (InstructionId debe ser UUID)
-                            trx.setReferencia(UUID.randomUUID().toString());
                             Map<String, Object> clienteInfo = clienteClient.obtenerCliente(idCliente);
                             if (clienteInfo != null && clienteInfo.get("nombre") != null) {
                                 nombreDebtor = clienteInfo.get("nombre").toString();
@@ -156,7 +153,6 @@ public class TransaccionServiceImpl implements TransaccionService {
 
                         String messageId = UUID.randomUUID().toString();
                         String creationTime = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
-                                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
                                 .format(java.time.format.DateTimeFormatter.ISO_INSTANT);
 
                         String beneficiario = request.getBeneficiario() != null ? request.getBeneficiario()
