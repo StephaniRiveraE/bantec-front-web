@@ -40,4 +40,10 @@ public class Controller {
         transaccionService.solicitarReverso(request);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/motivos-devolucion")
+    @Operation(summary = "Listar motivos de devolución (desde Switch)")
+    public ResponseEntity<List<java.util.Map<String, String>>> obtenerMotivosDevolucion() {
+        return ResponseEntity.ok(transaccionService.obtenerMotivosDevolucion());
+    }
 }

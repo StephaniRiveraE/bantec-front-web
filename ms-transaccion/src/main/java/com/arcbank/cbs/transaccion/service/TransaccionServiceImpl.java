@@ -581,4 +581,9 @@ public class TransaccionServiceImpl implements TransaccionService {
             throw new BusinessException("Error de comunicación con el Switch: " + e.getMessage());
         }
     }
+
+    @Override
+    public java.util.List<java.util.Map<String, String>> obtenerMotivosDevolucion() {
+        return switchClient.obtenerMotivosDevolucion();
+    }
 }
