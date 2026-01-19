@@ -453,39 +453,90 @@ public class TransaccionServiceImpl implements TransaccionService {
             throw new BusinessException("Transacción original no encontrada");
         }
 
-        if (!"TRANSFERENCIA_SALIDA".equals(originalTx.getTipoOperacion())) {
-            log.warn("⚠️ Recibida devolución para una transacción que no es de SALIDA: {}",
-                    originalTx.getTipoOperacion());
-        }
-
-        if ("REVERSADA".equals(originalTx.getEstado()) || "DEVUELTA".equals(originalTx.getEstado())) {
-            log.warn("⚠️ Transacción ya marcada como devuelta.");
-            return;
-        }
-
         BigDecimal amount = request.getBody().getReturnAmount().getValue();
-        Integer idCuentaCliente = originalTx.getIdCuentaOrigen();
 
-        BigDecimal nuevoSaldo = procesarSaldo(idCuentaCliente, amount);
+        // CASO A: Devolución de dinero que NOSOTROS enviamos (Nos devuelven la plata)
+        // Tipo: TRANSFERENCIA_SALIDA -> Acreditamos al cliente
+        if ("TRANSFERENCIA_SALIDA".equals(originalTx.getTipoOperacion())) {
 
-        originalTx.setEstado("DEVUELTA");
-        originalTx.setDescripcion(originalTx.getDescripcion() + " [DEVUELTA]");
-        transaccionRepository.save(originalTx);
+            if ("REVERSADA".equals(originalTx.getEstado()) || "DEVUELTA".equals(originalTx.getEstado())) {
+                log.warn("⚠️ Transacción de salida ya marcada como devuelta.");
+                return;
+            }
 
-        Transaccion returnTx = Transaccion.builder()
-                .referencia(request.getBody().getReturnInstructionId())
-                .tipoOperacion("DEVOLUCION_RECIBIDA")
-                .monto(amount)
-                .idCuentaDestino(idCuentaCliente)
-                .saldoResultante(nuevoSaldo)
-                .descripcion("Devolución recibida: " + request.getBody().getReturnReason())
-                .canal("SWITCH")
-                .estado("COMPLETADA")
-                .idTransaccionReversa(originalTx.getIdTransaccion())
-                .build();
+            Integer idCuentaCliente = originalTx.getIdCuentaOrigen();
+            BigDecimal nuevoSaldo = procesarSaldo(idCuentaCliente, amount); // CRÉDITO (+)
 
-        transaccionRepository.save(returnTx);
-        log.info("✅ Devolución procesada exitosamente. Cliente acreditado.");
+            originalTx.setEstado("DEVUELTA");
+            originalTx.setDescripcion(originalTx.getDescripcion() + " [DEVUELTA]");
+            transaccionRepository.save(originalTx);
+
+            Transaccion returnTx = Transaccion.builder()
+                    .referencia(request.getBody().getReturnInstructionId())
+                    .tipoOperacion("DEVOLUCION_RECIBIDA")
+                    .monto(amount)
+                    .idCuentaDestino(idCuentaCliente)
+                    .saldoResultante(nuevoSaldo)
+                    .descripcion("Devolución recibida: " + request.getBody().getReturnReason())
+                    .canal("SWITCH")
+                    .estado("COMPLETADA")
+                    .idTransaccionReversa(originalTx.getIdTransaccion())
+                    .build();
+
+            transaccionRepository.save(returnTx);
+            log.info("✅ Devolución (Crédito) procesada exitosamente. Cliente acreditado.");
+
+        }
+        // CASO B: Solicitud de reverso de dinero que NOSOTROS recibimos (Nos quitan la
+        // plata)
+        // Tipo: TRANSFERENCIA_ENTRADA -> Debitamos al cliente
+        else if ("TRANSFERENCIA_ENTRADA".equals(originalTx.getTipoOperacion())) {
+
+            if ("REVERSADA".equals(originalTx.getEstado()) || "DEVUELTA".equals(originalTx.getEstado())) {
+                log.warn("⚠️ Transacción de entrada ya fue reversada anteriormente.");
+                return;
+            }
+
+            Integer idCuentaCliente = originalTx.getIdCuentaDestino();
+            log.info("💸 Procesando DEBITO por solicitud de reverso (ISO 20022). Cuenta afectada: {}", idCuentaCliente);
+
+            // Intentar debitar (puede fallar si NO HAY FONDOS)
+            try {
+                BigDecimal nuevoSaldo = procesarSaldo(idCuentaCliente, amount.negate()); // DÉBITO (-)
+
+                originalTx.setEstado("REVERSADA");
+                originalTx.setDescripcion(originalTx.getDescripcion() + " [REVERSADA SOLICITUD EXT]");
+                transaccionRepository.save(originalTx);
+
+                Transaccion debitTx = Transaccion.builder()
+                        .referencia(request.getBody().getReturnInstructionId())
+                        .tipoOperacion("REVERSO_DEBITO")
+                        .monto(amount)
+                        .idCuentaOrigen(idCuentaCliente) // Ahora es origen porque sale la plata
+                        .saldoResultante(nuevoSaldo)
+                        .descripcion("Reverso solicitado por banco origen: " + request.getBody().getReturnReason())
+                        .canal("SWITCH")
+                        .estado("COMPLETADA")
+                        .idTransaccionReversa(originalTx.getIdTransaccion())
+                        .build();
+
+                transaccionRepository.save(debitTx);
+                log.info("✅ Reverso (Débito) ejecutado exitosamente. Fondos devueltos al Switch.");
+
+            } catch (BusinessException e) {
+                log.error("❌ No se pudo ejecutar el reverso (Fondos insuficientes o cuenta bloqueada): {}",
+                        e.getMessage());
+                // IMPORTANTE: En un escenario real, aquí deberíamos responder un NACK al Switch
+                // o dejarlo en cola.
+                // Por ahora lanzamos la excepción para que el Controller retorne error
+                // (422/500).
+                throw new BusinessException(
+                        "No se puede ejecutar el reverso: Fondos insuficientes en la cuenta del cliente.");
+            }
+
+        } else {
+            log.warn("⚠️ Tipo de operación original no soportada para devolución: {}", originalTx.getTipoOperacion());
+        }
     }
 
     @Override
