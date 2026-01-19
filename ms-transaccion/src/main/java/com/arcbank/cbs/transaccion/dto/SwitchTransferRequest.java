@@ -2,11 +2,13 @@ package com.arcbank.cbs.transaccion.dto;
 
 import lombok.*;
 import java.math.BigDecimal;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class SwitchTransferRequest {
 
     private Header header;
@@ -52,6 +54,9 @@ public class SwitchTransferRequest {
         private String name;
         private String accountId;
         private String accountType;
+        // Field for Debtor (Origin)
+        private String bankId;
+        // Field for Creditor (Destino)
         private String targetBankId;
     }
 }

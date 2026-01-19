@@ -180,6 +180,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                                                 .name(nombreDebtor)
                                                 .accountId(numeroCuentaOrigen)
                                                 .accountType(tipoCuentaDebtor)
+                                                .bankId(codigoBanco)
                                                 .build())
                                         .creditor(SwitchTransferRequest.Party.builder()
                                                 .name(beneficiario)
