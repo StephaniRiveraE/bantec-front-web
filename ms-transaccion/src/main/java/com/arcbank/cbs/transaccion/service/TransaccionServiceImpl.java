@@ -601,4 +601,19 @@ public class TransaccionServiceImpl implements TransaccionService {
                 return "MS03";
         }
     }
+
+    @Override
+    public String consultarEstadoTransferencia(String instructionId) {
+        return transaccionRepository.findByReferencia(instructionId)
+                .map(tx -> {
+                    String estado = tx.getEstado();
+                    if ("COMPLETADA".equals(estado) || "EXITOSA".equals(estado) || "DEVUELTA".equals(estado)) {
+                        return "COMPLETED";
+                    } else if ("FALLIDA".equals(estado) || "REVERSADA".equals(estado)) {
+                        return "FAILED";
+                    }
+                    return "COMPLETED";
+                })
+                .orElse("NOT_FOUND");
+    }
 }

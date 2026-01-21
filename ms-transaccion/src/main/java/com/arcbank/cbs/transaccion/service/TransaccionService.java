@@ -26,4 +26,6 @@ public interface TransaccionService {
     void solicitarReverso(RefoundRequestDTO request);
 
     List<Map<String, String>> obtenerMotivosDevolucion();
+
+    String consultarEstadoTransferencia(String instructionId);
 }

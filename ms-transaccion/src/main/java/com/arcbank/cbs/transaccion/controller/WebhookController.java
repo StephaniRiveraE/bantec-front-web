@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -81,5 +83,11 @@ public class WebhookController {
                         log.error("❌ Error procesando webhook unificado: {}", e.getMessage());
                         return ResponseEntity.status(422).body(Map.of("status", "NACK", "error", e.getMessage()));
                 }
+        }
+
+        @GetMapping("/api/core/transferencias/recepcion/status/{instructionId}")
+        public ResponseEntity<?> consultarEstado(@PathVariable String instructionId) {
+                String estado = transaccionService.consultarEstadoTransferencia(instructionId);
+                return ResponseEntity.ok(Map.of("estado", estado));
         }
 }
