@@ -36,9 +36,9 @@ public class Controller {
 
     @PostMapping("/reverso")
     @Operation(summary = "Solicitar reverso de transacción")
-    public ResponseEntity<Void> solicitarReverso(@Valid @RequestBody RefoundRequestDTO request) {
+    public ResponseEntity<Object> solicitarReverso(@Valid @RequestBody RefoundRequestDTO request) {
         transaccionService.solicitarReverso(request);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(java.util.Map.of("message", "Solicitud de reverso procesada exitosamente"));
     }
 
     @GetMapping("/motivos-devolucion")
