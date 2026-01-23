@@ -442,8 +442,14 @@ public class TransaccionServiceImpl implements TransaccionService {
     @Override
     @Transactional
     public void procesarDevolucionEntrante(SwitchRefundRequest request) {
-
-        procesarDevolucionEntranteLogic(request);
+        try {
+            procesarDevolucionEntranteLogic(request);
+            transaccionRepository.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            log.warn(
+                    "⚠️ DataIntegrityViolation (Duplicado) detectado al procesar devolución. Ignorando para idempotencia. Error: {}",
+                    e.getMessage());
+        }
     }
 
     private void procesarDevolucionEntranteLogic(SwitchRefundRequest request) {
