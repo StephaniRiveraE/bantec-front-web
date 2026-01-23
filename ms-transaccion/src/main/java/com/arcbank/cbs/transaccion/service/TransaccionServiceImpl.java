@@ -644,7 +644,12 @@ public class TransaccionServiceImpl implements TransaccionService {
                         .idTransaccionReversa(originalTx.getIdTransaccion())
                         .build();
 
-                transaccionRepository.save(reversaTx);
+                try {
+                    transaccionRepository.save(reversaTx);
+                } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                    log.warn("⚠️ Ignorando duplicado al guardar reversa (posible race condition con webhook): {}",
+                            e.getMessage());
+                }
                 log.info("✅ Devolución completada localmente.");
 
             } else {
