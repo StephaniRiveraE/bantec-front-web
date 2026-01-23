@@ -54,9 +54,9 @@ public class SwitchTransferRequest {
         private String name;
         private String accountId;
         private String accountType;
-        // Field for Debtor (Origin)
+
         private String bankId;
-        // Field for Creditor (Destino)
+
         private String targetBankId;
     }
 }

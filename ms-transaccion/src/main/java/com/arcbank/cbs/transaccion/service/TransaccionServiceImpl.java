@@ -442,7 +442,6 @@ public class TransaccionServiceImpl implements TransaccionService {
     @Override
     @Transactional
     public void procesarDevolucionEntrante(SwitchRefundRequest request) {
-        // EVITAR PROCESAR NUESTRAS PROPIAS SOLICITUDES (ECHO)
         if (request.getHeader().getOriginatingBankId() != null &&
                 request.getHeader().getOriginatingBankId().equalsIgnoreCase(codigoBanco)) {
             log.info("ℹ️ Ignorando Devolución originada por nosotros mismos (Echo/Confirmación).");
@@ -450,7 +449,17 @@ public class TransaccionServiceImpl implements TransaccionService {
         }
 
         String originalId = request.getBody().getOriginalInstructionId();
-        log.info("🔙 Procesando devolución entrante para Tx Original: {}", originalId);
+        String returnId = request.getBody().getReturnInstructionId();
+        String bancoOrigenRef = request.getHeader().getOriginatingBankId();
+
+        log.info("🔙 Procesando devolución entrante. ReturnID: {}, Para Tx Original: {}, Desde Banco: {}",
+                returnId, originalId, bancoOrigenRef);
+
+        if (transaccionRepository.findByReferencia(returnId).isPresent()) {
+            log.warn("⚠️ Devolución duplicada detectada (Ref: {}). Ignorando para evitar error de llave duplicada.",
+                    returnId);
+            return;
+        }
 
         Transaccion originalTx = transaccionRepository.findByReferencia(originalId)
                 .orElse(null);
@@ -460,10 +469,19 @@ public class TransaccionServiceImpl implements TransaccionService {
             throw new BusinessException("Transacción original no encontrada");
         }
 
+        java.time.LocalDateTime fechaReverso = java.time.LocalDateTime.now();
+        if (request.getHeader().getCreationDateTime() != null) {
+            try {
+                fechaReverso = java.time.OffsetDateTime.parse(request.getHeader().getCreationDateTime())
+                        .toLocalDateTime();
+            } catch (Exception e) {
+                log.warn("⚠️ No se pudo parsear fecha de reverso: {}. Usando fecha actual.",
+                        request.getHeader().getCreationDateTime());
+            }
+        }
+
         BigDecimal amount = request.getBody().getReturnAmount().getValue();
 
-        // CASO A: Devolución de dinero que NOSOTROS enviamos (Nos devuelven la plata)
-        // Tipo: TRANSFERENCIA_SALIDA -> Acreditamos al cliente
         if ("TRANSFERENCIA_SALIDA".equals(originalTx.getTipoOperacion())) {
 
             if ("REVERSADA".equals(originalTx.getEstado()) || "DEVUELTA".equals(originalTx.getEstado())) {
@@ -472,14 +490,14 @@ public class TransaccionServiceImpl implements TransaccionService {
             }
 
             Integer idCuentaCliente = originalTx.getIdCuentaOrigen();
-            BigDecimal nuevoSaldo = procesarSaldo(idCuentaCliente, amount); // CRÉDITO (+)
+            BigDecimal nuevoSaldo = procesarSaldo(idCuentaCliente, amount);
 
             originalTx.setEstado("DEVUELTA");
             originalTx.setDescripcion(originalTx.getDescripcion() + " [DEVUELTA]");
             transaccionRepository.save(originalTx);
 
             Transaccion returnTx = Transaccion.builder()
-                    .referencia(request.getBody().getReturnInstructionId())
+                    .referencia(returnId)
                     .tipoOperacion("DEVOLUCION_RECIBIDA")
                     .monto(amount)
                     .idCuentaDestino(idCuentaCliente)
@@ -488,16 +506,14 @@ public class TransaccionServiceImpl implements TransaccionService {
                     .canal("SWITCH")
                     .estado("COMPLETADA")
                     .idTransaccionReversa(originalTx.getIdTransaccion())
+                    .idBancoExterno(bancoOrigenRef)
+                    .fechaCreacion(fechaReverso)
                     .build();
 
             transaccionRepository.save(returnTx);
             log.info("✅ Devolución (Crédito) procesada exitosamente. Cliente acreditado.");
 
-        }
-        // CASO B: Solicitud de reverso de dinero que NOSOTROS recibimos (Nos quitan la
-        // plata)
-        // Tipo: TRANSFERENCIA_ENTRADA -> Debitamos al cliente
-        else if ("TRANSFERENCIA_ENTRADA".equals(originalTx.getTipoOperacion())) {
+        } else if ("TRANSFERENCIA_ENTRADA".equals(originalTx.getTipoOperacion())) {
 
             if ("REVERSADA".equals(originalTx.getEstado()) || "DEVUELTA".equals(originalTx.getEstado())) {
                 log.warn("⚠️ Transacción de entrada ya fue reversada anteriormente.");
@@ -507,24 +523,25 @@ public class TransaccionServiceImpl implements TransaccionService {
             Integer idCuentaCliente = originalTx.getIdCuentaDestino();
             log.info("💸 Procesando DEBITO por solicitud de reverso (ISO 20022). Cuenta afectada: {}", idCuentaCliente);
 
-            // Intentar debitar (puede fallar si NO HAY FONDOS)
             try {
-                BigDecimal nuevoSaldo = procesarSaldo(idCuentaCliente, amount.negate()); // DÉBITO (-)
+                BigDecimal nuevoSaldo = procesarSaldo(idCuentaCliente, amount.negate());
 
                 originalTx.setEstado("REVERSADA");
                 originalTx.setDescripcion(originalTx.getDescripcion() + " [REVERSADA SOLICITUD EXT]");
                 transaccionRepository.save(originalTx);
 
                 Transaccion debitTx = Transaccion.builder()
-                        .referencia(request.getBody().getReturnInstructionId())
+                        .referencia(returnId)
                         .tipoOperacion("REVERSO_DEBITO")
                         .monto(amount)
-                        .idCuentaOrigen(idCuentaCliente) // Ahora es origen porque sale la plata
+                        .idCuentaOrigen(idCuentaCliente)
                         .saldoResultante(nuevoSaldo)
                         .descripcion("Reverso solicitado por banco origen: " + request.getBody().getReturnReason())
                         .canal("SWITCH")
                         .estado("COMPLETADA")
                         .idTransaccionReversa(originalTx.getIdTransaccion())
+                        .idBancoExterno(bancoOrigenRef)
+                        .fechaCreacion(fechaReverso)
                         .build();
 
                 transaccionRepository.save(debitTx);
@@ -533,10 +550,6 @@ public class TransaccionServiceImpl implements TransaccionService {
             } catch (BusinessException e) {
                 log.error("❌ No se pudo ejecutar el reverso (Fondos insuficientes o cuenta bloqueada): {}",
                         e.getMessage());
-                // IMPORTANTE: En un escenario real, aquí deberíamos responder un NACK al Switch
-                // o dejarlo en cola.
-                // Por ahora lanzamos la excepción para que el Controller retorne error
-                // (422/500).
                 throw new BusinessException(
                         "No se puede ejecutar el reverso: Fondos insuficientes en la cuenta del cliente.");
             }

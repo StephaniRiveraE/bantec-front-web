@@ -41,9 +41,8 @@ public class WebhookController {
                                                 .body(Map.of("status", "NACK", "error", "Body faltante"));
                         }
 
-                        // Detección de Tipo de Mensaje
                         if (body.containsKey("returnInstructionId") || body.containsKey("originalInstructionId")) {
-                                // CASO 1: Es una DEVOLUCIÓN (pacs.004)
+
                                 log.info("🔀 Detectado: DEVOLUCIÓN (pacs.004)");
 
                                 SwitchRefundRequest refundRequest = mapper.convertValue(payload,
@@ -53,7 +52,6 @@ public class WebhookController {
                                 return ResponseEntity.ok(Map.of("status", "ACK", "message", "Devolución procesada"));
 
                         } else {
-                                // CASO 2: Es una TRANSFERENCIA NORMAL (pacs.008)
                                 log.info("🔀 Detectado: TRANSFERENCIA (pacs.008)");
 
                                 SwitchTransferRequest transferRequest = mapper.convertValue(payload,
