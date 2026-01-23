@@ -442,9 +442,7 @@ public class TransaccionServiceImpl implements TransaccionService {
     @Override
     @Transactional
     public void procesarDevolucionEntrante(SwitchRefundRequest request) {
-        // No capturamos DataIntegrityViolationException para que falle la Tx si hay
-        // duplicado
-        // y el Switch reciba un error 500/409, evitando que BANTEC crea que fue éxito.
+
         procesarDevolucionEntranteLogic(request);
     }
 
@@ -456,9 +454,7 @@ public class TransaccionServiceImpl implements TransaccionService {
         }
 
         String originalId = request.getBody().getOriginalInstructionId();
-        // Trim para evitar que espacios invisibles causen "falsos no-duplicados" en la
-        // búsqueda,
-        // pero luego fallen al insertar en la DB por el constraint exacto.
+
         String returnId = request.getBody().getReturnInstructionId() != null
                 ? request.getBody().getReturnInstructionId().trim()
                 : null;
