@@ -442,6 +442,13 @@ public class TransaccionServiceImpl implements TransaccionService {
     @Override
     @Transactional
     public void procesarDevolucionEntrante(SwitchRefundRequest request) {
+        // No capturamos DataIntegrityViolationException para que falle la Tx si hay
+        // duplicado
+        // y el Switch reciba un error 500/409, evitando que BANTEC crea que fue éxito.
+        procesarDevolucionEntranteLogic(request);
+    }
+
+    private void procesarDevolucionEntranteLogic(SwitchRefundRequest request) {
         if (request.getHeader().getOriginatingBankId() != null &&
                 request.getHeader().getOriginatingBankId().equalsIgnoreCase(codigoBanco)) {
             log.info("ℹ️ Ignorando Devolución originada por nosotros mismos (Echo/Confirmación).");
@@ -449,7 +456,12 @@ public class TransaccionServiceImpl implements TransaccionService {
         }
 
         String originalId = request.getBody().getOriginalInstructionId();
-        String returnId = request.getBody().getReturnInstructionId();
+        // Trim para evitar que espacios invisibles causen "falsos no-duplicados" en la
+        // búsqueda,
+        // pero luego fallen al insertar en la DB por el constraint exacto.
+        String returnId = request.getBody().getReturnInstructionId() != null
+                ? request.getBody().getReturnInstructionId().trim()
+                : null;
         String bancoOrigenRef = request.getHeader().getOriginatingBankId();
 
         log.info("🔙 Procesando devolución entrante. ReturnID: {}, Para Tx Original: {}, Desde Banco: {}",
@@ -461,7 +473,7 @@ public class TransaccionServiceImpl implements TransaccionService {
             return;
         }
 
-        Transaccion originalTx = transaccionRepository.findByReferencia(originalId)
+        Transaccion originalTx = transaccionRepository.findPorReferenciaForUpdate(originalId)
                 .orElse(null);
 
         if (originalTx == null) {
