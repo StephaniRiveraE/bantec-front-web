@@ -335,7 +335,9 @@ public class TransaccionServiceImpl implements TransaccionService {
 
                         trx.setEstado("FALLIDA");
                         trx.setSaldoResultante(saldoRevertido);
-                        trx.setDescripcion("ERROR TÉCNICO SWITCH: " + e.getMessage());
+                        String errorMsg = e.getMessage() != null ? e.getMessage() : "Error desconocido";
+                        if (errorMsg.length() > 200) errorMsg = errorMsg.substring(0, 200) + "...";
+                        trx.setDescripcion("ERROR TÉCNICO SWITCH: " + errorMsg);
 
                         Transaccion fallida = transaccionRepository.save(trx);
                         return mapearADTO(fallida, null);
