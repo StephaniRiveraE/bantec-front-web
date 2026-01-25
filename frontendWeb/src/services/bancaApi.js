@@ -2,6 +2,17 @@ import { apiFetch } from '../context/AuthContext'
 
 const GATEWAY_URL = "";
 
+const ISO_ERROR_MAP = {
+  "AC00": "¡Transferencia exitosa!",
+  "AM04": "No tienes saldo suficiente para esta operación.",
+  "AC01": "El número de cuenta o banco destino no existe. Verifícalo.",
+  "AC04": "La cuenta destino está cerrada o inactiva.",
+  "MS03": "Hubo un problema de comunicación con el otro banco. Intenta en unos minutos.",
+  "AG01": "Operación no permitida por políticas del banco.",
+  "BE01": "Los datos del destinatario no coinciden. Por seguridad, no se procesó.",
+  "RC01": "Error en los datos enviados. Contacta a soporte."
+};
+
 async function request(path, options = {}) {
   const url = `${GATEWAY_URL}${path}`;
 
@@ -14,7 +25,16 @@ async function request(path, options = {}) {
 
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
-    const msg = errorBody.mensaje || errorBody.error || res.statusText;
+    let msg = errorBody.mensaje || errorBody.error || res.statusText;
+
+    // Lógica para mapear mensajes ISO 20022
+    if (msg && typeof msg === 'string') {
+      const codigoIso = msg.substring(0, 4).toUpperCase();
+      if (ISO_ERROR_MAP[codigoIso]) {
+        msg = `${ISO_ERROR_MAP[codigoIso]} (${msg})`;
+      }
+    }
+
     throw new Error(msg);
   }
 

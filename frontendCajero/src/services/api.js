@@ -2,6 +2,17 @@
 // nginx hace proxy de /api/* hacia api-gateway:8080
 const BASE_URL = "";
 
+const ISO_ERROR_MAP = {
+  "AC00": "¡Transferencia exitosa!",
+  "AM04": "No tienes saldo suficiente para esta operación.",
+  "AC01": "El número de cuenta o banco destino no existe. Verifícalo.",
+  "AC04": "La cuenta destino está cerrada o inactiva.",
+  "MS03": "Hubo un problema de comunicación con el otro banco. Intenta en unos minutos.",
+  "AG01": "Operación no permitida por políticas del banco.",
+  "BE01": "Los datos del destinatario no coinciden. Por seguridad, no se procesó.",
+  "RC01": "Error en los datos enviados. Contacta a soporte."
+};
+
 async function request(path, options = {}) {
   const url = `${BASE_URL}${path}`;
   console.log("🌐 Request a:", url);
@@ -16,7 +27,16 @@ async function request(path, options = {}) {
   if (!res.ok) {
     const errorJson = await res.json().catch(() => null);
     // Intentamos obtener el mensaje limpio del backend (BusinessException)
-    const message = errorJson ? (errorJson.mensaje || errorJson.error) : res.statusText;
+    let message = errorJson ? (errorJson.mensaje || errorJson.error) : res.statusText;
+
+    // Lógica para mapear mensajes ISO 20022
+    if (message && typeof message === 'string') {
+      const codigoIso = message.substring(0, 4).toUpperCase();
+      if (ISO_ERROR_MAP[codigoIso]) {
+        message = `${ISO_ERROR_MAP[codigoIso]} (${message})`;
+      }
+    }
+
     console.error("❌ Error response:", message);
     throw new Error(message || "Error del servidor");
   }
