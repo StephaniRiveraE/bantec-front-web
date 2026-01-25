@@ -791,7 +791,8 @@ public class TransaccionServiceImpl implements TransaccionService {
                 SwitchTransferResponse resp = switchClient.consultarEstadoTransferencia(instructionId);
                 if (resp != null && resp.getData() != null) {
                     String estadoSwitch = resp.getData().getEstado();
-                    
+                    log.info("🔍 [DEBUG] Estado recibido del Switch para {}: {}", instructionId, estadoSwitch);
+
                     if ("COMPLETED".equalsIgnoreCase(estadoSwitch) || "EXITOSA".equalsIgnoreCase(estadoSwitch)) {
                         log.info("✅ Transacción confirmada tras validación tardía.");
                         tx.setEstado("COMPLETADA");
