@@ -271,6 +271,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                             saldoImpactado = saldoDebitado; // El dinero sigue debitado temporalmente
                             trx.setEstado("PENDIENTE");
                             trx.setDescripcion("En proceso de validación. Le notificaremos.");
+                            trx.setSaldoResultante(saldoDebitado); // FIX: Guardar el saldo impactado para que no quede en 0
                             
                             // Guardamos estado pendiente
                             Transaccion pendiente = transaccionRepository.save(trx);
@@ -776,17 +777,51 @@ public class TransaccionServiceImpl implements TransaccionService {
     }
 
     @Override
+    @Transactional
     public String consultarEstadoTransferencia(String instructionId) {
-        return transaccionRepository.findByReferencia(instructionId)
-                .map(tx -> {
-                    String estado = tx.getEstado();
-                    if ("COMPLETADA".equals(estado) || "EXITOSA".equals(estado) || "DEVUELTA".equals(estado)) {
+        Transaccion tx = transaccionRepository.findByReferencia(instructionId).orElse(null);
+        
+        if (tx == null) {
+            return "NOT_FOUND";
+        }
+
+        if ("PENDIENTE".equals(tx.getEstado())) {
+            log.info("🕵️ Validando estado PENDIENTE en Switch para Ref: {}", instructionId);
+            try {
+                SwitchTransferResponse resp = switchClient.consultarEstadoTransferencia(instructionId);
+                if (resp != null && resp.getData() != null) {
+                    String estadoSwitch = resp.getData().getEstado();
+                    
+                    if ("COMPLETED".equalsIgnoreCase(estadoSwitch) || "EXITOSA".equalsIgnoreCase(estadoSwitch)) {
+                        log.info("✅ Transacción confirmada tras validación tardía.");
+                        tx.setEstado("COMPLETADA");
+                        tx.setDescripcion(tx.getDescripcion().replace("En proceso de validación. Le notificaremos.", "Transferencia Finalizada"));
+                        transaccionRepository.save(tx);
                         return "COMPLETED";
-                    } else if ("FALLIDA".equals(estado) || "REVERSADA".equals(estado)) {
-                        return "FAILED";
+                    } 
+                    
+                    if ("FAILED".equalsIgnoreCase(estadoSwitch) || "FALLIDA".equalsIgnoreCase(estadoSwitch) || "RECHAZADA".equalsIgnoreCase(estadoSwitch)) {
+                         log.warn("❌ Transacción fallida detectada tras validación tardía.");
+                         tx.setEstado("FALLIDA");
+                         String motivo = (resp.getError() != null) ? resp.getError().getMessage() : "Fallo confirmado por Switch";
+                         tx.setDescripcion("RECHAZADA: " + motivo);
+                         transaccionRepository.save(tx);
+                         return "FAILED";
                     }
-                    return "COMPLETED";
-                })
-                .orElse("NOT_FOUND");
+                }
+            } catch (Exception e) {
+                log.warn("⚠️ No se pudo validar estado en Switch (Lazy Update): {}", e.getMessage());
+            }
+            return "PENDING";
+        }
+
+        String estado = tx.getEstado();
+        if ("COMPLETADA".equals(estado) || "EXITOSA".equals(estado) || "DEVUELTA".equals(estado)) {
+            return "COMPLETED";
+        } else if ("FALLIDA".equals(estado) || "REVERSADA".equals(estado)) {
+            return "FAILED";
+        }
+        
+        return "PENDING";
     }
 }
