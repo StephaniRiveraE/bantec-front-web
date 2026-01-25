@@ -79,6 +79,18 @@ public class WebhookController {
 
                 } catch (Exception e) {
                         log.error("❌ Error procesando webhook unificado: {}", e.getMessage());
+                        
+                        if (e instanceof com.arcbank.cbs.transaccion.exception.BusinessException) {
+                                com.arcbank.cbs.transaccion.exception.BusinessException be = (com.arcbank.cbs.transaccion.exception.BusinessException) e;
+                                if (be.getCode() != null) {
+                                        return ResponseEntity.status(422).body(Map.of(
+                                                "code", be.getCode(),
+                                                "message", be.getMessage(),
+                                                "timestamp", java.time.format.DateTimeFormatter.ISO_INSTANT.format(java.time.Instant.now())
+                                        ));
+                                }
+                        }
+                        
                         return ResponseEntity.status(422).body(Map.of("status", "NACK", "error", e.getMessage()));
                 }
         }

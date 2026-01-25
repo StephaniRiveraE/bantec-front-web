@@ -420,43 +420,8 @@ public class TransaccionServiceImpl implements TransaccionService {
         Integer idCuentaDestino = obtenerIdCuentaPorNumero(cuentaDestino);
 
         if (idCuentaDestino == null) {
-            log.warn("❌ Cuenta destino {} no encontrada. Iniciando devolución automática (Regla < 48h).",
-                    cuentaDestino);
-
-            String messageId = "MSG-RET-AUTO-" + System.currentTimeMillis();
-            String creationTime = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
-                    .format(java.time.format.DateTimeFormatter.ISO_INSTANT);
-            String returnId = UUID.randomUUID().toString();
-
-            SwitchRefundRequest switchRequest = SwitchRefundRequest.builder()
-                    .header(SwitchRefundRequest.Header.builder()
-                            .messageId(messageId)
-                            .creationDateTime(creationTime)
-                            .originatingBankId(codigoBanco)
-                            .build())
-                    .body(SwitchRefundRequest.Body.builder()
-                            .returnInstructionId(returnId)
-                            .originalInstructionId(instructionId)
-                            .returnReason("AC04")
-                            .returnAmount(SwitchRefundRequest.Amount.builder()
-                                    .currency("USD")
-                                    .value(monto)
-                                    .build())
-
-                            .build())
-                    .build();
-
-            try {
-                SwitchTransferResponse response = switchClient.solicitarDevolucion(switchRequest);
-                if (response.isSuccess()) {
-                    log.info("✅ Devolución automática iniciada exitosamente. ReturnId: {}", returnId);
-                } else {
-                    log.error("❌ Falló el inicio de la devolución automática: {}", response.getError());
-                }
-            } catch (Exception e) {
-                log.error("❌ Error técnico enviando devolución automática: {}", e.getMessage());
-            }
-            return;
+            log.warn("❌ Cuenta destino {} no encontrada. Rechazando con AC01.", cuentaDestino);
+            throw new BusinessException("AC01", "AC01 - Número de cuenta incorrecto o inexistente en Banco Destino");
         }
 
         if (transaccionRepository.findByReferencia(instructionId).isPresent()) {
