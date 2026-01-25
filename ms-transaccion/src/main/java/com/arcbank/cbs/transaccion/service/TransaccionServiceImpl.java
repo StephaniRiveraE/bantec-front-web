@@ -788,6 +788,16 @@ public class TransaccionServiceImpl implements TransaccionService {
         }
 
         if ("PENDIENTE".equals(tx.getEstado())) {
+            // 1. Check for Expiry (Safety Valve)
+            long minutesDiff = java.time.temporal.ChronoUnit.MINUTES.between(tx.getFechaCreacion(), java.time.LocalDateTime.now());
+            if (minutesDiff >= 3) {
+                log.warn("⚠️ Transacción PENDIENTE expirada ({} min). Forzando fallo.", minutesDiff);
+                tx.setEstado("FALLIDA");
+                tx.setDescripcion("RECHAZADA: Expiró tiempo de validación");
+                transaccionRepository.save(tx);
+                return "FAILED";
+            }
+
             log.info("🕵️ Validando estado PENDIENTE en Switch para Ref: {}", instructionId);
             try {
                 SwitchTransferResponse resp = switchClient.consultarEstadoTransferencia(instructionId);
@@ -813,15 +823,23 @@ public class TransaccionServiceImpl implements TransaccionService {
                     }
                 }
             } catch (Exception e) {
-                String errorMsg = e.getMessage();
-                if (errorMsg != null && (errorMsg.contains("404") || errorMsg.contains("Not Found"))) {
-                     log.warn("⚠️ Transacción no encontrada en Switch (404). Marcando como FALLIDA.");
+                String errorMsg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+                log.warn("⚠️ Error en Lazy Update: {}", errorMsg);
+                
+                // Treat definite connection/server errors as failures to release the transaction
+                if (errorMsg.contains("404") || errorMsg.contains("not found") || 
+                    errorMsg.contains("500") || errorMsg.contains("502") || errorMsg.contains("503") || errorMsg.contains("504") ||
+                    errorMsg.contains("refused") || errorMsg.contains("time out") || errorMsg.contains("timed out")) {
+                    
+                     log.warn("⚠️ Error crítico de comunicación/Switch ({}). Marcando como FALLIDA.", errorMsg);
                      tx.setEstado("FALLIDA");
-                     tx.setDescripcion("RECHAZADA: No encontrada en destino (Posible timeout previo)");
+                     // Truncar error si es necesario
+                     if (errorMsg.length() > 200) errorMsg = errorMsg.substring(0, 200) + "...";
+                     tx.setDescripcion("RECHAZADA: Problema de conexión (" + errorMsg + ")");
                      transaccionRepository.save(tx);
                      return "FAILED";
                 }
-                log.warn("⚠️ No se pudo validar estado en Switch (Lazy Update): {}", e.getMessage());
+                // Si es un error desconocido pero no crítico, seguimos en PENDING hasta que expire
             }
             return "PENDING";
         }
