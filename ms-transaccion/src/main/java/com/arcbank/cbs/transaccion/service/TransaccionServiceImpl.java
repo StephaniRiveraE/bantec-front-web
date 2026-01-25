@@ -224,6 +224,51 @@ public class TransaccionServiceImpl implements TransaccionService {
                         log.error("❌ [BANTEC] Error de comunicación con switch, revirtiendo débito: {}",
                                 e.getMessage());
 
+                        // INTENTO DE REVERSO AUTOMÁTICO AL SWITCH (SAFETY CATCH)
+                        // Si fue un Timeout, el Switch podría haberla procesado. Enviamos reverso para cancelar.
+                        try {
+                             log.warn("⚠️ Intentando notificar reverso automático al Switch (Safety Check)...");
+                             String revMessageId = "MSG-REV-AUTO-" + System.currentTimeMillis();
+                             String revCreationTime = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
+                                     .format(java.time.format.DateTimeFormatter.ISO_INSTANT);
+                             
+                             SwitchRefundRequest refundReq = SwitchRefundRequest.builder()
+                                 .header(SwitchRefundRequest.Header.builder()
+                                         .messageId(revMessageId)
+                                         .creationDateTime(revCreationTime)
+                                         .originatingBankId(codigoBanco)
+                                         .build())
+                                 .body(SwitchRefundRequest.Body.builder()
+                                         .returnInstructionId(UUID.randomUUID().toString())
+                                         .originalInstructionId(trx.getReferencia())
+                                         .returnReason("MS03") // Technical Error
+                                         .returnAmount(SwitchRefundRequest.Amount.builder()
+                                                 .currency("USD")
+                                                 .value(trx.getMonto())
+                                                 .build())
+                                         .build())
+                                 .build();
+                             
+                             try {
+                                 SwitchTransferResponse revResp = switchClient.solicitarDevolucion(refundReq);
+                                 if (revResp != null && revResp.isSuccess()) {
+                                     log.info("✅ Reverso automático aceptado por Switch.");
+                                 } else {
+                                     log.warn("⚠️ Switch rechazó reverso automático: {}", revResp);
+                                 }
+                             } catch (Exception exRev) {
+                                 String err = exRev.getMessage();
+                                 if (err != null && err.contains("409") && err.contains("Transacción original no encontrada")) {
+                                     log.info("✅ Switch confirmó 409 (Tx no encontrada), por lo tanto está reversada efectivamente.");
+                                 } else {
+                                     throw exRev; // Propagar para loguear en el catch externo
+                                 }
+                             }
+                        } catch (Exception ex) {
+                            // Ignoramos errores aquí porque lo importante es el reverso local que sigue a continuación
+                            log.warn("⚠️ Falló el intento de reverso automático en Switch (Esperable si Switch está caído): {}", ex.getMessage());
+                        }
+
                         BigDecimal saldoRevertido = procesarSaldo(trx.getIdCuentaOrigen(), montoTotal);
                         log.info("🔄 [BANTEC] Saldo revertido por error técnico en cta {}. Nuevo saldo: {}",
                                 trx.getIdCuentaOrigen(), saldoRevertido);
@@ -613,22 +658,37 @@ public class TransaccionServiceImpl implements TransaccionService {
                         .build())
                 .build();
 
+        SwitchTransferResponse response = null;
+
         try {
             log.info("📤 Enviando solicitud de reverso al Switch (pacs.004)...");
-
             String motivoIso = mapearCodigoErrorInternalToISO(requestDTO.getMotivo());
-
             switchRequest.getBody().setReturnReason(motivoIso);
+            
+            response = switchClient.solicitarDevolucion(switchRequest);
+            
+        } catch (Exception e) {
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && errorMsg.contains("409") && errorMsg.contains("Transacción original no encontrada")) {
+                log.warn("⚠️ Switch reportó transacción no encontrada (409) durante el reverso. Asumiendo que la transacción nunca existió o falló previamente. Procediendo con el reverso local.");
+                response = SwitchTransferResponse.builder()
+                        .success(true)
+                        .build();
+            } else {
+               log.error("Error técnico al solicitar reverso: ", e);
+                // Si es un error desconocido, lanzamos excepción
+               throw new BusinessException("Error de comunicación con el Switch: " + errorMsg);
+            }
+        }
 
-            SwitchTransferResponse response = switchClient.solicitarDevolucion(switchRequest);
-
+        try {
             if (response != null && response.isSuccess()) {
-                log.info("✅ Reverso APROBADO por el Switch. Realizando crédito interno...");
+                log.info("✅ Reverso APROBADO por el Switch (o no encontrado). Realizando crédito interno...");
 
                 BigDecimal nuevoSaldo = procesarSaldo(originalTx.getIdCuentaOrigen(), originalTx.getMonto());
 
                 originalTx.setEstado("REVERSADA");
-                originalTx.setDescripcion(originalTx.getDescripcion() + " [REVERSADA: " + motivoIso + "]");
+                originalTx.setDescripcion(originalTx.getDescripcion() + " [REVERSADA: " + requestDTO.getMotivo() + "]");
                 transaccionRepository.save(originalTx);
 
                 Transaccion reversaTx = Transaccion.builder()
@@ -636,7 +696,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                         .tipoOperacion("DEVOLUCION_RECIBIDA")
                         .monto(originalTx.getMonto())
                         .descripcion(
-                                "Devolución de Tx " + originalTx.getIdTransaccion() + ": " + motivoIso)
+                                "Devolución de Tx " + originalTx.getIdTransaccion() + ": " + requestDTO.getMotivo())
                         .canal("WEB")
                         .idCuentaDestino(originalTx.getIdCuentaOrigen())
                         .saldoResultante(nuevoSaldo)
@@ -661,10 +721,9 @@ public class TransaccionServiceImpl implements TransaccionService {
             }
 
         } catch (Exception e) {
-            log.error("Error técnico al solicitar reverso: ", e);
-            if (e instanceof BusinessException)
-                throw e;
-            throw new BusinessException("Error de comunicación con el Switch: " + e.getMessage());
+             if (e instanceof BusinessException) throw e;
+             log.error("Error al procesar el reverso local: ", e);
+             throw new BusinessException("Error interno al procesar reverso: " + e.getMessage());
         }
     }
 
