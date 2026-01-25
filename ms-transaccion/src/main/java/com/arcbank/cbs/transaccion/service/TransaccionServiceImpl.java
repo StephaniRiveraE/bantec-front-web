@@ -216,9 +216,68 @@ public class TransaccionServiceImpl implements TransaccionService {
                             return mapearADTO(fallida, null);
                         }
 
-                        log.info("✅ [BANTEC] Transferencia aceptada por el switch. Referencia: {}",
-                                trx.getReferencia());
-                        saldoImpactado = saldoDebitado;
+                        log.info("✅ [BANTEC] Transferencia aceptada por el switch (ACK). Iniciando Polling de confirmación...");
+                        
+                        // POLLING SÍNCRONO (15 segundos máx)
+                        boolean confirmado = false;
+                        String ultimoEstado = "PENDING";
+                        String motivoFallo = "";
+
+                        for (int i = 0; i < 10; i++) {
+                            try {
+                                Thread.sleep(1500); // 1.5s wait
+                            } catch (InterruptedException ie) {
+                                Thread.currentThread().interrupt();
+                                break;
+                            }
+
+                            try {
+                                SwitchTransferResponse statusResp = switchClient.consultarEstadoTransferencia(trx.getReferencia());
+                                if (statusResp != null && statusResp.getData() != null) {
+                                    ultimoEstado = statusResp.getData().getEstado();
+                                    
+                                    if ("COMPLETED".equalsIgnoreCase(ultimoEstado) || "EXITOSA".equalsIgnoreCase(ultimoEstado)) {
+                                        confirmado = true;
+                                        log.info("✅ Polling: Transacción CONFIRMADA en intento #{}", i + 1);
+                                        break;
+                                    }
+                                    
+                                    if ("FAILED".equalsIgnoreCase(ultimoEstado) || "FALLIDA".equalsIgnoreCase(ultimoEstado) || "RECHAZADA".equalsIgnoreCase(ultimoEstado)) {
+                                        log.warn("❌ Polling: Switch reportó FALLO en intento #{}. Motivo: {}", i + 1, statusResp.getError());
+                                        motivoFallo = (statusResp.getError() != null) ? statusResp.getError().getMessage() : "Rechazo desconocido";
+                                        
+                                        // REVERSO LOCAL INMEDIATO
+                                        BigDecimal saldoRevertido = procesarSaldo(trx.getIdCuentaOrigen(), montoTotal);
+                                        trx.setEstado("FALLIDA");
+                                        trx.setSaldoResultante(saldoRevertido);
+                                        trx.setDescripcion("RECHAZADA POR DESTINO: " + motivoFallo);
+                                        Transaccion fallida = transaccionRepository.save(trx);
+                                        
+                                        throw new BusinessException("Transacción Rechazada: " + motivoFallo);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                log.warn("⚠️ Error en polling intento #{}: {}", i + 1, e.getMessage());
+                            }
+                        }
+
+                        if (confirmado) {
+                            saldoImpactado = saldoDebitado;
+                            trx.setEstado("COMPLETADA"); // Confirmado
+                        } else {
+                            // TIMEOUT o no confirmado aún
+                            log.warn("⚠️ Polling finalizado sin confirmación (TIMEOUT). Estado último: {}", ultimoEstado);
+                            // No revertimos, dejamos en PENDIENTE/EN_PROCESO. El usuario recibirá aviso de "En proceso".
+                            saldoImpactado = saldoDebitado; // El dinero sigue debitado temporalmente
+                            trx.setEstado("PENDIENTE");
+                            trx.setDescripcion("En proceso de validación. Le notificaremos.");
+                            
+                            // Guardamos estado pendiente
+                            Transaccion pendiente = transaccionRepository.save(trx);
+                            TransaccionResponseDTO respDto = mapearADTO(pendiente, null);
+                            respDto.setMensajeUsuario("En proceso de validación. Le notificaremos.");
+                            return respDto;
+                        }
 
                     } catch (Exception e) {
                         log.error("❌ [BANTEC] Error de comunicación con switch, revirtiendo débito: {}",

@@ -30,4 +30,5 @@ public class TransaccionResponseDTO {
     private String descripcion;
     private String canal;
     private String estado;
+    private String mensajeUsuario;
 }

@@ -29,6 +29,9 @@ public interface SwitchClient {
     @PostMapping("/api/v2/switch/transfers/return")
     SwitchTransferResponse solicitarDevolucion(@RequestBody SwitchRefundRequest request);
 
+    @GetMapping("/api/v2/switch/transfers/{instructionId}")
+    SwitchTransferResponse consultarEstadoTransferencia(@org.springframework.web.bind.annotation.PathVariable("instructionId") String instructionId);
+
     @GetMapping("/api/v1/reference/iso20022/errors")
     List<Map<String, String>> obtenerMotivosDevolucion();
 }
