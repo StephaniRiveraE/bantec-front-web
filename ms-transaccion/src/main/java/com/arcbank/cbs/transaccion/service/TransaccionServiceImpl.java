@@ -810,6 +810,14 @@ public class TransaccionServiceImpl implements TransaccionService {
                     }
                 }
             } catch (Exception e) {
+                String errorMsg = e.getMessage();
+                if (errorMsg != null && (errorMsg.contains("404") || errorMsg.contains("Not Found"))) {
+                     log.warn("⚠️ Transacción no encontrada en Switch (404). Marcando como FALLIDA.");
+                     tx.setEstado("FALLIDA");
+                     tx.setDescripcion("RECHAZADA: No encontrada en destino (Posible timeout previo)");
+                     transaccionRepository.save(tx);
+                     return "FAILED";
+                }
                 log.warn("⚠️ No se pudo validar estado en Switch (Lazy Update): {}", e.getMessage());
             }
             return "PENDING";
