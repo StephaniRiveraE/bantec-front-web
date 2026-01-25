@@ -78,65 +78,57 @@ jobs:
             # Actualizar nginx.conf con el dominio real
             sed -i "s/bantec-bank\.duckdns\.org/$DOMAIN/g" "$PROJECT_DIR/nginx/nginx.conf"
             
-            echo "🌐 Verificando certificados SSL para $DOMAIN..."
-            CERT_DIR="$PROJECT_DIR/nginx/certs/live/$DOMAIN"
+            # === GESTIÓN ROBUSTA DE SSL (MÉTODO WEBROOT) ===
+            DOMAIN="bantec-bank.duckdns.org"
             
-            # 1. Limpieza de Certificados Dummy
-            if [ -f "$CERT_DIR/fullchain.pem" ]; then
-              ISSUER=$(sudo openssl x509 -in "$CERT_DIR/fullchain.pem" -noout -issuer)
-              echo "🔎 Certificado actual emitido por: $ISSUER"
-              
-              if [[ "$ISSUER" != *"Let's Encrypt"* ]]; then
-                 echo "🗑️ Se detectó un certificado DUMMY (No oficial). Eliminando para forzar renovación real..."
-                 sudo rm -rf "$PROJECT_DIR/nginx/certs/live/$DOMAIN"
-                 sudo rm -rf "$PROJECT_DIR/nginx/certs/archive/$DOMAIN"
-                 sudo rm -rf "$PROJECT_DIR/nginx/certs/renewal/$DOMAIN.conf"
-              else
-                 echo "✅ Certificado válido de Let's Encrypt detectado."
-              fi
+            # 1. Actualizar DNS
+            echo "� Actualizando DNS en DuckDNS..."
+            if [ -n "${{ secrets.DUCKDNS_TOKEN }}" ]; then
+               curl -k "https://www.duckdns.org/update?domains=bantec-bank&token=${{ secrets.DUCKDNS_TOKEN }}&ip="
+               echo "✅ Solicitud de actualización enviada."
+            else
+               echo "⚠️ FALTAN SECRETOS DE DUCKDNS"
             fi
             
-            # 2. Obtención de Certificado (Si no existe)
-            if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
-              echo "🛡️ Certificado real no encontrado. Intentando obtener de Let's Encrypt..."
-              
-              # Detener Nginx si está corriendo para liberar el puerto 80
-              sudo docker stop nginx-proxy-bantec || true
-              
-              # Ejecutar Certbot Standalone
-              sudo docker run --rm --name certbot \
-                -p 80:80 \
-                -v "$(pwd)/nginx/certs:/etc/letsencrypt" \
-                -v "$(pwd)/nginx/certbot:/var/www/certbot" \
-                certbot/certbot certonly --standalone \
-                -d "$DOMAIN" \
-                --email arcbank2@gmail.com \
-                --agree-tos --non-interactive --no-eff-email || echo "⚠️ Falló la obtención automática."
+            # 2. Configurar Nginx para el dominio real
+            sed -i "s/bantec-bank\.duckdns\.org/$DOMAIN/g" "$PROJECT_DIR/nginx/nginx.conf"
 
-              # Fallback: Si no se obtuvo el certificado real, crear uno temporal para que Nginx arranque
-              if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
-                echo "📝 Creando certificado temporal (self-signed) para evitar errores de Nginx..."
-                sudo mkdir -p "$CERT_DIR"
-                sudo openssl req -x509 -nodes -days 7 -newkey rsa:2048 \
+            CERT_DIR="$PROJECT_DIR/nginx/certs/live/$DOMAIN"
+            mkdir -p "$CERT_DIR"
+
+            # 3. Garantizar que exista AL MENOS un certificado (Dummy o Real) para que Nginx arranque
+            if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
+                echo "⚠️ No se encontraron certificados. Generando DUMMY para permitir arranque de Nginx..."
+                sudo openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
                   -keyout "$CERT_DIR/privkey.pem" \
                   -out "$CERT_DIR/fullchain.pem" \
-                  -subj "/C=EC/ST=Pichincha/L=Quito/O=Bantec/CN=$DOMAIN"
-              fi
+                  -subj "/CN=localhost"
             fi
 
-            # Limpiar Docker antes del build
-            echo "🧹 Limpiando imágenes y contenedores antiguos..."
-            sudo docker image prune -f
-
-            # Construir y levantar con docker-compose (producción)
-            echo "🚀 Reiniciando servicios..."
+            # 4. Levantar Servicios (Incluyendo Nginx con el cert actual)
+            echo "🚀 Levantando contenedores..."
             sudo docker-compose -f docker-compose.prod.yml down --remove-orphans
             sudo docker-compose -f docker-compose.prod.yml build --no-cache
             sudo docker-compose -f docker-compose.prod.yml up -d --force-recreate
 
-            # Reiniciar Nginx Proxy para aplicar certificados y configs
-            echo "🔄 Reiniciando Proxy Nginx..."
-            sudo docker restart nginx-proxy-bantec || true
+            echo "⏳ Esperando 15s para que Nginx inicie correctamente..."
+            sleep 15
+
+            # 5. Intentar obtener/renovar certificado REAL con Certbot (Webroot)
+            # Este método usa el Nginx corriendo para validar el dominio (puerto 80)
+            echo "🛡️ Ejecutando Certbot con método WEBROOT..."
+            
+            sudo docker-compose -f docker-compose.prod.yml run --rm --entrypoint "\
+              certbot certonly --webroot -w /var/www/certbot \
+              --force-renewal \
+              --email arcbank2@gmail.com \
+              -d $DOMAIN \
+              --agree-tos \
+              --non-interactive" certbot || echo "⚠️ Certbot falló o ya tiene certificados al día."
+
+            # 6. Recargar Nginx para tomar el nuevo certificado (si se generó)
+            echo "🔄 Recargando Nginx para aplicar certificados..."
+            sudo docker-compose -f docker-compose.prod.yml exec -T nginx-proxy nginx -s reload
 
             # Mostrar estado final de contenedores
             echo "📊 Estado actual de contenedores:"
