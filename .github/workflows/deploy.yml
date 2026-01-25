@@ -62,8 +62,18 @@ jobs:
             fi
 
             # Certificados SSL para Nginx (DuckDNS)
-            DOMAIN="${{ secrets.DUCKDNS_DOMAIN }}.duckdns.org"
+            DOMAIN="bantec-bank.duckdns.org"
             echo "🌐 Configurando dominio: $DOMAIN"
+            
+            # --- PASO CRÍTICO: Actualizar IP en DuckDNS ---
+            # Esto garantiza que el dominio apunte a ESTA máquina antes de pedir el certificado
+            echo "📡 Actualizando DNS en DuckDNS..."
+            if [ -n "${{ secrets.DUCKDNS_TOKEN }}" ]; then
+               curl -k "https://www.duckdns.org/update?domains=bantec-bank&token=${{ secrets.DUCKDNS_TOKEN }}&ip="
+               echo "✅ DNS actualizado."
+            else
+               echo "⚠️ NO SE ENCONTRÓ DUCKDNS_TOKEN EN SECRETOS. EL DNS PODRÍA NO ESTAR ACTUALIZADO."
+            fi
             
             # Actualizar nginx.conf con el dominio real
             sed -i "s/bantec-bank\.duckdns\.org/$DOMAIN/g" "$PROJECT_DIR/nginx/nginx.conf"
@@ -71,6 +81,22 @@ jobs:
             echo "🌐 Verificando certificados SSL para $DOMAIN..."
             CERT_DIR="$PROJECT_DIR/nginx/certs/live/$DOMAIN"
             
+            # 1. Limpieza de Certificados Dummy
+            if [ -f "$CERT_DIR/fullchain.pem" ]; then
+              ISSUER=$(sudo openssl x509 -in "$CERT_DIR/fullchain.pem" -noout -issuer)
+              echo "🔎 Certificado actual emitido por: $ISSUER"
+              
+              if [[ "$ISSUER" != *"Let's Encrypt"* ]]; then
+                 echo "🗑️ Se detectó un certificado DUMMY (No oficial). Eliminando para forzar renovación real..."
+                 sudo rm -rf "$PROJECT_DIR/nginx/certs/live/$DOMAIN"
+                 sudo rm -rf "$PROJECT_DIR/nginx/certs/archive/$DOMAIN"
+                 sudo rm -rf "$PROJECT_DIR/nginx/certs/renewal/$DOMAIN.conf"
+              else
+                 echo "✅ Certificado válido de Let's Encrypt detectado."
+              fi
+            fi
+            
+            # 2. Obtención de Certificado (Si no existe)
             if [ ! -f "$CERT_DIR/fullchain.pem" ]; then
               echo "🛡️ Certificado real no encontrado. Intentando obtener de Let's Encrypt..."
               
@@ -84,7 +110,7 @@ jobs:
                 -v "$(pwd)/nginx/certbot:/var/www/certbot" \
                 certbot/certbot certonly --standalone \
                 -d "$DOMAIN" \
-                --email alison.tamayo@gmail.com \
+                --email arcbank2@gmail.com \
                 --agree-tos --non-interactive --no-eff-email || echo "⚠️ Falló la obtención automática."
 
               # Fallback: Si no se obtuvo el certificado real, crear uno temporal para que Nginx arranque
