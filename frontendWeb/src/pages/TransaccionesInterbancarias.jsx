@@ -82,11 +82,45 @@ export default function TransaccionesInterbancarias() {
         setStep(3);
     };
 
+    // Estado para Idempotencia (UUID único por intento de pago)
+    const [idempotencyKey, setIdempotencyKey] = useState(null);
+
+    // Helpers
+    const generateUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    // Estados de UI para la Experiencia de Usuario (Máquina de Estados)
+    const [processingState, setProcessingState] = useState('IDLE'); // IDLE, CONNECTING, VALIDATING, SUCCESS, ERROR, TIMEOUT
+    const [statusMessage, setStatusMessage] = useState('');
+
     const confirmTransfer = async () => {
         if (!fromAccId) return setError('Seleccione una cuenta de origen válida.');
+
+        const currentRef = idempotencyKey || generateUUID();
+        if (!idempotencyKey) setIdempotencyKey(currentRef);
+
+        // Estado A: Iniciando
+        setProcessingState('CONNECTING');
+        setStatusMessage('Conectando con la red bancaria...');
         setLoading(true);
+
+        // Timer para cambiar mensajes visuales (Simulación de progreso mientras el backend hace polling)
+        const msgTimer = setTimeout(() => {
+            setProcessingState('VALIDATING');
+            setStatusMessage('Validando cuenta en banco destino...');
+        }, 2000);
+
+        const msgTimer2 = setTimeout(() => {
+            setStatusMessage('Confirmando fondos...');
+        }, 8000);
+
         try {
             const request = {
+                referencia: currentRef,
                 tipoOperacion: "TRANSFERENCIA_SALIDA",
                 idCuentaOrigen: Number(fromAccId),
                 cuentaExterna: toAccount,
@@ -96,7 +130,16 @@ export default function TransaccionesInterbancarias() {
                 canal: "WEB",
                 descripcion: `Transferencia a ${toName} - Banco ${bankBic}`
             }
+
+            console.log("Enviando Tx con Idempotency-Key:", currentRef);
+
+            // Esta llamada al backend demora ~15s porque el Backend hace el Polling Sync.
             await realizarTransferenciaInterbancaria(request);
+
+            clearTimeout(msgTimer);
+            clearTimeout(msgTimer2);
+
+            // Estado C: Éxito
             addTransaction({
                 accId: fromAccId,
                 amount: -(Number(amount)),
@@ -104,11 +147,25 @@ export default function TransaccionesInterbancarias() {
                 desc: `Transf. Interbancaria a ${toName}`,
                 fecha: new Date().toISOString()
             });
-            // Sincronización automática con el backend para reflejar el saldo real
             await refreshAccounts();
+
+            setProcessingState('SUCCESS');
+            setIdempotencyKey(null);
             setStep(4);
+
         } catch (err) {
-            setError(err.message || 'Error en la transferencia interbancaria');
+            clearTimeout(msgTimer);
+            clearTimeout(msgTimer2);
+
+            // Estado D: Fallo
+            setProcessingState('ERROR');
+
+            // Si el error es por Timeout del backend
+            if (err.message && (err.message.includes("Timeout") || err.message.includes("tiempo"))) {
+                setError("La operación está tardando más de lo normal. Le notificaremos por SMS.");
+            } else {
+                setError(err.message || 'Error en la transferencia interbancaria');
+            }
         } finally {
             setLoading(false);
         }
@@ -254,10 +311,25 @@ export default function TransaccionesInterbancarias() {
                             </div>
                             {error && <div className="transfer-error" style={{ marginTop: 20 }}><FiInfo /> {error}</div>}
                             <div className="transfer-button-row">
-                                <button className="btn-back" onClick={() => setStep(2)} disabled={loading}>Modificar</button>
-                                <button className="btn btn-transfer" onClick={confirmTransfer} disabled={loading}>
-                                    {loading ? 'Procesando...' : 'Confirmar y Enviar'}
-                                </button>
+                                <div className="transfer-button-row">
+                                    {loading ? (
+                                        <div className="processing-indicator" style={{ width: '100%', textAlign: 'center', padding: '20px' }}>
+                                            <div className="spinner-border text-warning" role="status" style={{ marginBottom: '10px' }}></div>
+                                            <p style={{ color: 'var(--accent-gold)', fontWeight: 'bold' }}>{statusMessage}</p>
+                                            <small style={{ color: '#ccc' }}>Por favor no cierre esta ventana</small>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <button className="btn-back" onClick={() => {
+                                                setStep(2);
+                                                setIdempotencyKey(null);
+                                            }} disabled={loading}>Modificar</button>
+                                            <button className="btn btn-transfer" onClick={confirmTransfer} disabled={loading}>
+                                                Confirmar y Enviar
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
