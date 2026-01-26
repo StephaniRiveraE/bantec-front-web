@@ -61,23 +61,7 @@ jobs:
               "$PROJECT_DIR/generate-mtls-certs.sh"
             fi
 
-            # Certificados SSL para Nginx (DuckDNS)
-            DOMAIN="bantec-bank.duckdns.org"
-            echo "🌐 Configurando dominio: $DOMAIN"
-            
-            # --- PASO CRÍTICO: Actualizar IP en DuckDNS ---
-            # Esto garantiza que el dominio apunte a ESTA máquina antes de pedir el certificado
-            echo "📡 Actualizando DNS en DuckDNS..."
-            if [ -n "${{ secrets.DUCKDNS_TOKEN }}" ]; then
-               curl -k "https://www.duckdns.org/update?domains=bantec-bank&token=${{ secrets.DUCKDNS_TOKEN }}&ip="
-               echo "✅ DNS actualizado."
-            else
-               echo "⚠️ NO SE ENCONTRÓ DUCKDNS_TOKEN EN SECRETOS. EL DNS PODRÍA NO ESTAR ACTUALIZADO."
-            fi
-            
-            # Actualizar nginx.conf con el dominio real
-            sed -i "s/bantec-bank\.duckdns\.org/$DOMAIN/g" "$PROJECT_DIR/nginx/nginx.conf"
-            
+
             # === GESTIÓN ROBUSTA DE SSL (MÉTODO WEBROOT) ===
             DOMAIN="bantec-bank.duckdns.org"
             

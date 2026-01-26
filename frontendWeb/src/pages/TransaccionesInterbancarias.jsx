@@ -134,12 +134,11 @@ export default function TransaccionesInterbancarias() {
             console.log("Enviando Tx con Idempotency-Key:", currentRef);
 
             // Esta llamada al backend demora ~15s porque el Backend hace el Polling Sync.
-            await realizarTransferenciaInterbancaria(request);
+            const response = await realizarTransferenciaInterbancaria(request);
 
             clearTimeout(msgTimer);
             clearTimeout(msgTimer2);
 
-            // Estado C: Éxito
             addTransaction({
                 accId: fromAccId,
                 amount: -(Number(amount)),
@@ -149,7 +148,14 @@ export default function TransaccionesInterbancarias() {
             });
             await refreshAccounts();
 
-            setProcessingState('SUCCESS');
+            if (response && response.estado === 'PENDIENTE') {
+                // Estado E: Timeout / Pendiente
+                setProcessingState('WARNING');
+            } else {
+                // Estado C: Éxito
+                setProcessingState('SUCCESS');
+            }
+
             setIdempotencyKey(null);
             setStep(4);
 
@@ -157,7 +163,7 @@ export default function TransaccionesInterbancarias() {
             clearTimeout(msgTimer);
             clearTimeout(msgTimer2);
 
-            // Estado D: Fallo
+            // Estado D: Fallo (Rojo)
             setProcessingState('ERROR');
 
             // Si el error es por Timeout del backend
@@ -166,6 +172,10 @@ export default function TransaccionesInterbancarias() {
             } else {
                 setError(err.message || 'Error en la transferencia interbancaria');
             }
+
+            // Ir al paso 4 para mostrar el resultado Visual (Rojo)
+            setStep(4);
+
         } finally {
             setLoading(false);
         }
@@ -285,66 +295,115 @@ export default function TransaccionesInterbancarias() {
                     )}
 
                     {step === 3 && (
-                        <div className="step-content">
-                            <h3 style={{ marginBottom: 20, color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>Revisión de Datos Final</h3>
-                            <div className="transfer-summary">
-                                <div className="summary-item">
-                                    <span className="summary-label">Monto</span>
-                                    <span className="summary-value amount-highlight">${Number(amount).toFixed(2)}</span>
+                        loading ? (
+                            <div className="step-content" style={{ textAlign: 'center', padding: '40px 20px', minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                                <div className="spinner-border text-warning" role="status" style={{ width: '4rem', height: '4rem', marginBottom: '24px', borderWidth: '4px' }}></div>
+                                <h3 className="animate-pulse" style={{ color: 'var(--accent-gold)', fontSize: '1.4rem', marginBottom: '16px' }}>Enviando al Switch...</h3>
+                                <p style={{ fontSize: '1.1rem', color: '#fff', fontWeight: '500' }}>{statusMessage}</p>
+                                <div style={{ height: '4px', width: '60px', background: 'rgba(255,255,255,0.1)', margin: '20px auto', borderRadius: '2px' }}>
+                                    <div style={{ height: '100%', width: '100%', background: 'var(--accent-gold)', borderRadius: '2px', animation: 'progress 2s infinite ease-in-out' }}></div>
                                 </div>
-                                <div className="summary-item">
-                                    <span className="summary-label">Comisión</span>
-                                    <span className="summary-value">$0.00</span>
-                                </div>
-                                <div className="summary-item">
-                                    <span className="summary-label">Destino</span>
-                                    <span className="summary-value">{getBankName(bankBic)}</span>
-                                </div>
-                                <div className="summary-item">
-                                    <span className="summary-label">Beneficiario</span>
-                                    <span className="summary-value">{toName}</span>
-                                </div>
-                                <div className="summary-item">
-                                    <span className="summary-label">N° Cuenta</span>
-                                    <span className="summary-value">{toAccount}</span>
-                                </div>
+                                <small style={{ color: 'var(--text-muted)', marginTop: '10px' }}>Por favor no cierre esta ventana ni recargue la página.</small>
+                                <style>{`
+                                    @keyframes progress { 0% { width: 0%; opacity: 0.5; } 50% { width: 100%; opacity: 1; } 100% { width: 0%; left: 100%; opacity: 0.5; } }
+                                    .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+                                    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
+                                `}</style>
                             </div>
-                            {error && <div className="transfer-error" style={{ marginTop: 20 }}><FiInfo /> {error}</div>}
-                            <div className="transfer-button-row">
+                        ) : (
+                            <div className="step-content">
+                                <h3 style={{ marginBottom: 20, color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>Revisión de Datos Final</h3>
+                                <div className="transfer-summary">
+                                    <div className="summary-item">
+                                        <span className="summary-label">Monto</span>
+                                        <span className="summary-value amount-highlight">${Number(amount).toFixed(2)}</span>
+                                    </div>
+                                    <div className="summary-item">
+                                        <span className="summary-label">Comisión</span>
+                                        <span className="summary-value">$0.00</span>
+                                    </div>
+                                    <div className="summary-item">
+                                        <span className="summary-label">Destino</span>
+                                        <span className="summary-value">{getBankName(bankBic)}</span>
+                                    </div>
+                                    <div className="summary-item">
+                                        <span className="summary-label">Beneficiario</span>
+                                        <span className="summary-value">{toName}</span>
+                                    </div>
+                                    <div className="summary-item">
+                                        <span className="summary-label">N° Cuenta</span>
+                                        <span className="summary-value">{toAccount}</span>
+                                    </div>
+                                </div>
+                                {error && <div className="transfer-error" style={{ marginTop: 20 }}><FiInfo /> {error}</div>}
+
                                 <div className="transfer-button-row">
-                                    {loading ? (
-                                        <div className="processing-indicator" style={{ width: '100%', textAlign: 'center', padding: '20px' }}>
-                                            <div className="spinner-border text-warning" role="status" style={{ marginBottom: '10px' }}></div>
-                                            <p style={{ color: 'var(--accent-gold)', fontWeight: 'bold' }}>{statusMessage}</p>
-                                            <small style={{ color: '#ccc' }}>Por favor no cierre esta ventana</small>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <button className="btn-back" onClick={() => {
-                                                setStep(2);
-                                                setIdempotencyKey(null);
-                                            }} disabled={loading}>Modificar</button>
-                                            <button className="btn btn-transfer" onClick={confirmTransfer} disabled={loading}>
-                                                Confirmar y Enviar
-                                            </button>
-                                        </>
-                                    )}
+                                    <button className="btn-back" onClick={() => {
+                                        setStep(2);
+                                        setIdempotencyKey(null);
+                                    }} disabled={loading}>Modificar</button>
+                                    <button className="btn btn-transfer" onClick={confirmTransfer} disabled={loading}>
+                                        Confirmar y Enviar
+                                    </button>
                                 </div>
                             </div>
-                        </div>
+                        )
                     )}
 
                     {step === 4 && (
                         <div className="step-content success-state" style={{ textAlign: 'center' }}>
-                            <div className="success-icon"><FiCheck /></div>
-                            <h2 className="success-title">Enviado a Red</h2>
-                            <p style={{ color: 'var(--text-muted)', marginBottom: 30 }}>La transferencia está siendo procesada por el Switch Interbancario.</p>
-                            <div className="transfer-button-row">
-                                <button className="btn-back" onClick={() => navigate('/movimientos')}>Ir al Inicio</button>
-                                <button className="btn btn-transfer" style={{ background: 'var(--grad-gold)', color: '#000' }} onClick={downloadReceipt}>
-                                    <FiDownload style={{ marginRight: 8 }} /> Comprobante
-                                </button>
-                            </div>
+                            {processingState === 'WARNING' ? (
+                                <>
+                                    <div className="success-icon" style={{ background: 'rgba(255, 193, 7, 0.2)', color: '#ffc107' }}>
+                                        <FiActivity />
+                                    </div>
+                                    <h2 className="success-title" style={{ color: '#ffc107' }}>En Proceso de Validación</h2>
+                                    <p style={{ color: 'var(--text-muted)', marginBottom: 30 }}>
+                                        La operación está tardando más de lo normal. Estamos validando el estado final con el banco destino.
+                                        <br /><br />
+                                        <strong>Le notificaremos por mensaje cuando se complete.</strong>
+                                    </p>
+                                    <div className="transfer-button-row">
+                                        <button className="btn-back" onClick={() => navigate('/movimientos')}>Ir al Inicio</button>
+                                    </div>
+                                </>
+                            ) : processingState === 'ERROR' ? (
+                                <>
+                                    <div className="success-icon" style={{ background: 'rgba(220, 53, 69, 0.2)', color: '#dc3545' }}>
+                                        <FiInfo />
+                                    </div>
+                                    <h2 className="success-title" style={{ color: '#dc3545' }}>Transferencia Rechazada</h2>
+                                    <p style={{ color: 'var(--text-muted)', marginBottom: '10px' }}>
+                                        La operación no pudo completarse.
+                                    </p>
+                                    <div style={{ background: 'rgba(220, 53, 69, 0.1)', border: '1px solid #dc3545', padding: '15px', borderRadius: '8px', marginBottom: '30px', color: '#ffadad', fontSize: '0.9rem' }}>
+                                        {error}
+                                    </div>
+                                    <div className="transfer-button-row">
+                                        <button className="btn-back" onClick={() => navigate('/movimientos')}>Cancelar</button>
+                                        <button className="btn btn-transfer" onClick={() => {
+                                            setStep(2); // Volver a editar
+                                            setIdempotencyKey(null); // Nueva intentona
+                                            setProcessingState('IDLE');
+                                            setError('');
+                                        }}>Intentar de Nuevo</button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="success-icon"><FiCheck /></div>
+                                    <h2 className="success-title">¡Transferencia Exitosa!</h2>
+                                    <p style={{ color: 'var(--text-muted)', marginBottom: 30 }}>
+                                        Su dinero ha sido transferido correctamente a {toName}.
+                                    </p>
+                                    <div className="transfer-button-row">
+                                        <button className="btn-back" onClick={() => navigate('/movimientos')}>Ir al Inicio</button>
+                                        <button className="btn btn-transfer" style={{ background: 'var(--grad-gold)', color: '#000' }} onClick={downloadReceipt}>
+                                            <FiDownload style={{ marginRight: 8 }} /> Comprobante
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>
