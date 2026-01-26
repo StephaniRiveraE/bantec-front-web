@@ -97,6 +97,19 @@ export default function TransaccionesInterbancarias() {
     const [processingState, setProcessingState] = useState('IDLE'); // IDLE, CONNECTING, VALIDATING, SUCCESS, ERROR, TIMEOUT
     const [statusMessage, setStatusMessage] = useState('');
 
+    // Mapa de Errores local para interpretación inmediata
+    const ERROR_MAP = {
+        "AC00": "¡Transferencia Exitosa!",
+        "AC01": "El número de cuenta destino no existe.",
+        "AC04": "La cuenta destino está cerrada o inactiva.",
+        "AM04": "Saldo insuficiente en su cuenta.",
+        "CH03": "📉 El monto excede el límite permitido ($10k).",
+        "MS03": "Hubo un problema de comunicación. (Error Técnico)",
+        "AG01": "⚠️ OPERACIÓN RESTRINGIDA: Su institución está en modo de cierre operativo.",
+        "BE01": "Datos del beneficiario no coinciden.",
+        "RC01": "Error en los datos enviados."
+    };
+
     const confirmTransfer = async () => {
         if (!fromAccId) return setError('Seleccione una cuenta de origen válida.');
 
@@ -137,25 +150,13 @@ export default function TransaccionesInterbancarias() {
             // CHECK: Validación inmediata de rechazo (Fail-Fast)
             const initStatus = initialRes.estado || initialRes.status;
             if (initStatus === 'FALLIDA' || initStatus === 'FAILED' || initStatus === 'RECHAZADA') {
-                let rawMsg = initialRes.mensaje || initialRes.descripcion || "Operación rechazada por el banco destino.";
-
-                // Limpieza de mensaje para UX
-                if (rawMsg.includes("AC01") || rawMsg.includes("Cuenta inválida")) {
-                    rawMsg = "La cuenta destino no existe o es inválida.";
-                } else if (rawMsg.includes("Fondos insuficientes")) {
-                    rawMsg = "Fondos insuficientes en cuenta origen.";
-                } else {
-                    // CATCH-ALL: Para cualquier otro error (Offline, Técnico, 504, Switch Error, JSON)
-                    // El usuario pidió explícitamente "Error de comunicación" y nada técnico.
-                    rawMsg = "Error de comunicación con la entidad financiera.";
-                }
-
-                throw new Error(rawMsg);
+                const initCode = (initialRes.codigo || "").toUpperCase();
+                const rawMsg = initialRes.mensaje || "Operación rechazada.";
+                // Usar mapa local si hay código, sino mensaje
+                throw new Error(ERROR_MAP[initCode] || rawMsg);
             }
 
-            // Si el backend responde, asumimos que la solicitud fue aceptada (201 Created o similar)
-            // IMPORTANTE: NO confirmamos éxito aún. Iniciamos Polling.
-
+            // Si el backend responde, asumimos que la solicitud fue aceptada
             const txIdInstruccion = initialRes.idInstruccion || initialRes.id || currentRef;
             console.log("2. Respuesta Inicial OK. Iniciando Polling para ID: " + txIdInstruccion);
 
@@ -168,31 +169,28 @@ export default function TransaccionesInterbancarias() {
 
             // Ciclo de Polling (Fase 2) - Máximo 10 intentos (15s aprox)
             while (attempts < 10) {
-                await new Promise(r => setTimeout(r, 1500)); // Esperar 1.5s
+                await new Promise(r => setTimeout(r, 1500));
 
                 try {
-                    console.log(`... Polling intento ${attempts + 1}/10`);
                     const pollRes = await getTransferStatus(txIdInstruccion);
+                    const { estado, codigo, mensaje } = pollRes;
+                    console.log(`Polling ${attempts + 1}: Estado=${estado}, Codigo=${codigo}`);
 
-                    // Normalizar estado (Soporte para diferentes respuestas del switch)
-                    const status = pollRes.estado || pollRes.status;
-                    console.log("   Estado recibido: ", status);
-
-                    if (status === 'COMPLETED' || status === 'APROBADA' || status === 'EXITOSA') {
+                    if (estado === 'COMPLETED') {
                         finalState = 'COMPLETED';
                         break;
                     }
 
-                    if (status === 'FAILED' || status === 'REJECTED' || status === 'RECHAZADA') {
+                    if (estado === 'FAILED' || estado === 'REJECTED') {
                         finalState = 'FAILED';
-                        finalReason = pollRes.mensaje || pollRes.motivo || pollRes.error || "Operación rechazada por el banco destino.";
+                        const codeKey = (codigo || "").toUpperCase();
+                        finalReason = ERROR_MAP[codeKey] || mensaje || ERROR_MAP['MS03'];
                         break;
                     }
 
                 } catch (pollErr) {
-                    console.warn("Error en polling (red o 404), reintentando...", pollErr);
+                    console.warn("Polling error:", pollErr);
                 }
-
                 attempts++;
             }
 
@@ -218,11 +216,10 @@ export default function TransaccionesInterbancarias() {
 
             } else if (finalState === 'FAILED') {
                 // Estado D: Fallo Confirmado
-                throw new Error(finalReason || "La transferencia fue rechazada por el sistema.");
+                throw new Error(finalReason);
 
             } else {
                 // Estado E: Timeout (Sigue Pendiente)
-                console.warn("Timeout de Polling: Estado sigue pendiente.");
                 setProcessingState('WARNING');
                 setStep(4);
             }
@@ -231,23 +228,14 @@ export default function TransaccionesInterbancarias() {
             clearTimeout(msgTimer);
             clearTimeout(msgTimer2);
 
-            console.error("Error en flujo de transacción:", err);
-
-            // Estado D: Fallo (Rojo)
+            console.error("Error Tx:", err);
             setProcessingState('ERROR');
 
-            // Extraer mensaje limpio
+            // Limpieza final de mensaje
             let errorMsg = err.message || 'Error desconocido';
-            if (errorMsg.includes("Timeout")) errorMsg = "Tiempo de espera agotado.";
-
-            // Sanitización estricta de errores técnicos
-            if (errorMsg.includes("Switch Error") || errorMsg.includes("{") || errorMsg.length > 80 || errorMsg.includes("Unexpected token")) {
-                errorMsg = "Error de comunicación con la entidad financiera.";
-            }
+            if (errorMsg.includes("Timeout")) errorMsg = "La operación está tardando más de lo normal.";
 
             setError(errorMsg);
-
-            // Ir al paso 4 para mostrar el resultado Visual (Rojo)
             setStep(4);
 
         } finally {

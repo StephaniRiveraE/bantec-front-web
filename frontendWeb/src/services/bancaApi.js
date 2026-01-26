@@ -45,7 +45,9 @@ async function request(path, options = {}) {
       msg = `${ISO_ERROR_MAP[codigoIso]}`;
     }
 
-    throw new Error(msg);
+    const error = new Error(msg);
+    error.response = { data: errorBody, status: res.status };
+    throw error;
   }
 
   if (res.status === 204) return null;
