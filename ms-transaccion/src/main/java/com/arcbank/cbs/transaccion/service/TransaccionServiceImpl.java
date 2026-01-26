@@ -215,12 +215,11 @@ public class TransaccionServiceImpl implements TransaccionService {
                             if (lowerError.contains("ac01")) friendlyError = "Cuenta destino inválida / inexistente";
                             else if (lowerError.contains("ac03")) friendlyError = "Cuenta destino inválida (AC03)";
                             else if (lowerError.contains("timeout") || lowerError.contains("504")) friendlyError = "Tiempo de espera agotado en destino";
-                            else if (lowerError.contains("offline") || lowerError.contains("fuera de linea") || lowerError.contains("no disponible")) friendlyError = "Banco destino Offline / No disponible";
-                            else if (lowerError.contains("mantenimiento") || lowerError.contains("maintenance")) friendlyError = "Banco destino en Mantenimiento";
-                            else if (lowerError.contains("suspendido") || lowerError.contains("suspended")) friendlyError = "Banco destino Suspendido";
-                            else if (lowerError.contains("solo recibir") || lowerError.contains("receive only")) friendlyError = "Banco destino solo recibe transferencias";
-                            else if (switchError.length() > 50) friendlyError = "Error Técnico: " + switchError.substring(0, 50) + "...";
-                            else friendlyError = switchError;
+                            else if (lowerError.contains("fondos")) friendlyError = "Fondos insuficientes";
+                            else {
+                                // Para errores Offline, Mantenimiento, Suspendido o Técnicos desconocidos
+                                friendlyError = "Error de comunicación con la entidad financiera";
+                            }
 
                             trx.setEstado("FALLIDA");
                             trx.setSaldoResultante(saldoRevertido);
@@ -357,12 +356,10 @@ public class TransaccionServiceImpl implements TransaccionService {
 
                         if (lowerEx.contains("ac01")) friendlyEx = "Cuenta destino inválida";
                         else if (lowerEx.contains("504") || lowerEx.contains("time out") || lowerEx.contains("timed out")) friendlyEx = "El banco destino no responde";
-                        else if (lowerEx.contains("connection refused")) friendlyEx = "Banco destino fuera de línea (Conexión rechazada)";
-                        else if (lowerEx.contains("offline") || lowerEx.contains("fuera de linea")) friendlyEx = "Banco destino Offline";
-                        else if (lowerEx.contains("mantenimiento")) friendlyEx = "Banco destino en Mantenimiento";
-                        else if (lowerEx.contains("suspendido")) friendlyEx = "Banco destino Suspendido";
-                        else if (errorMsg.length() > 100) friendlyEx = errorMsg.substring(0, 100) + "...";
-                        else friendlyEx = errorMsg;
+                        else {
+                            // CATCH-ALL para cualquier otro error de conexión/técnico
+                             friendlyEx = "Error de comunicación con la entidad financiera";
+                        }
 
                         trx.setDescripcion("RECHAZADA: " + friendlyEx);
 

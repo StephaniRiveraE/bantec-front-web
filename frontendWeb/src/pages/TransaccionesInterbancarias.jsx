@@ -140,9 +140,15 @@ export default function TransaccionesInterbancarias() {
                 let rawMsg = initialRes.mensaje || initialRes.descripcion || "Operación rechazada por el banco destino.";
 
                 // Limpieza de mensaje para UX
-                if (rawMsg.includes("AC01") || rawMsg.includes("Cuenta inválida")) rawMsg = "La cuenta destino no existe o es inválida.";
-                if (rawMsg.includes("504") || rawMsg.includes("Timeout")) rawMsg = "El banco destino no responde (Timeout).";
-                if (rawMsg.includes("Fondos insuficientes")) rawMsg = "Fondos insuficientes en cuenta origen.";
+                if (rawMsg.includes("AC01") || rawMsg.includes("Cuenta inválida")) {
+                    rawMsg = "La cuenta destino no existe o es inválida.";
+                } else if (rawMsg.includes("Fondos insuficientes")) {
+                    rawMsg = "Fondos insuficientes en cuenta origen.";
+                } else {
+                    // CATCH-ALL: Para cualquier otro error (Offline, Técnico, 504, Switch Error, JSON)
+                    // El usuario pidió explícitamente "Error de comunicación" y nada técnico.
+                    rawMsg = "Error de comunicación con la entidad financiera.";
+                }
 
                 throw new Error(rawMsg);
             }
@@ -233,6 +239,11 @@ export default function TransaccionesInterbancarias() {
             // Extraer mensaje limpio
             let errorMsg = err.message || 'Error desconocido';
             if (errorMsg.includes("Timeout")) errorMsg = "Tiempo de espera agotado.";
+
+            // Sanitización estricta de errores técnicos
+            if (errorMsg.includes("Switch Error") || errorMsg.includes("{") || errorMsg.length > 80 || errorMsg.includes("Unexpected token")) {
+                errorMsg = "Error de comunicación con la entidad financiera.";
+            }
 
             setError(errorMsg);
 
