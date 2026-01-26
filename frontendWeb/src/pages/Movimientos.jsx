@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { getMovimientos, solicitarReverso } from '../services/bancaApi'
-import { FiRefreshCw, FiArrowUpRight, FiArrowDownLeft, FiCalendar, FiDollarSign, FiSearch, FiRotateCcw, FiAlertCircle } from 'react-icons/fi'
+import { getMovimientos, solicitarReverso, getTransferStatus } from '../services/bancaApi' // Importar getTransferStatus
+import { FiRefreshCw, FiArrowUpRight, FiArrowDownLeft, FiCalendar, FiDollarSign, FiSearch, FiRotateCcw, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi'
 import './Movimientos.css'
 
 export default function Movimientos() {
@@ -58,16 +58,22 @@ export default function Movimientos() {
           })
         }
 
+        const desc = m.descripcion || '-';
+        // Detectar si es una transacción que quedó pendiente/en validación
+        const isPending = (m.estado === 'PENDIENTE') || desc.includes("validación") || desc.includes("proceso");
+
         return {
           id: m.idTransaccion || `mv-${i}`,
+          referencia: m.referencia || m.ref || m.transactionId, // Referencia para consultar Switch
           fecha: fechaStr,
-          desc: m.descripcion || '-',
+          desc: desc,
           tipo: m.tipoOperacion,
           amount: m.monto,
           saldoResultante: m.saldoResultante,
           isDebit: isDebit,
           originalDate: m.fechaCreacion, // Guardar fecha original para validación
-          estado: m.estado || 'COMPLETADA'
+          estado: m.estado || 'COMPLETADA',
+          isPending: isPending
         }
       })
 
@@ -76,6 +82,36 @@ export default function Movimientos() {
       console.error('Error cargando movimientos:', e)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // --- Verificar Estado en Switch ---
+  const handleCheckStatus = async (tx) => {
+    if (!tx.referencia) return alert("No se encontró referencia para consultar al Switch.");
+
+    const confirmMsg = confirm("¿Desea consultar el estado actual de esta transferencia en el Switch?");
+    if (!confirmMsg) return;
+
+    setLoading(true);
+    try {
+      const status = await getTransferStatus(tx.referencia);
+      console.log("Estado Switch:", status);
+
+      if (status.estado === 'COMPLETED' || status.status === 'COMPLETED') {
+        alert("✅ TRANSACCIÓN COMPLETADA\n\nEl Switch ha confirmado el éxito de la operación.");
+        // Aquí idealmente llamaríamos al backend para actualizar el estado, 
+        // pero por ahora recargamos para ver si el backend ya se sincronizó (polling interno)
+        loadMovements();
+      } else if (status.estado === 'FAILED' || status.status === 'FAILED') {
+        alert("❌ TRANSACCIÓN FALLIDA\n\nMotivo: " + (status.mensaje || status.error || "Desconocido"));
+        loadMovements();
+      } else {
+        alert("⚠️ ESTADO: " + (status.estado || status.status) + "\n\nLa operación sigue en proceso.");
+      }
+    } catch (err) {
+      alert("Error consultando: " + err.message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -118,7 +154,9 @@ export default function Movimientos() {
   // Helper para verificar 24h
   const canRefund = (tx) => {
     if (!tx.isDebit) return false
-    if (tx.estado !== 'COMPLETADA' && tx.estado !== 'EXITOSA') return false // Ajustar según estados reales
+    if (tx.isPending) return false; // No reversar si está pendiente
+    // Permitir reversar incluso si falló para pruebas, o solo completadas
+    // if (tx.estado !== 'COMPLETADA' && tx.estado !== 'EXITOSA') return false 
     if (!tx.originalDate) return false
 
     const txDate = new Date(tx.originalDate) // Asegurar formato ISO o parseable
@@ -150,7 +188,7 @@ export default function Movimientos() {
               onChange={e => setSelectedAccId(e.target.value)}
               className="mov-select"
             >
-              {state.user.accounts.map(a => (
+              {state.user.accounts?.map(a => (
                 <option key={a.id} value={a.id}>
                   {a.type} — {a.number}
                 </option>
@@ -170,7 +208,7 @@ export default function Movimientos() {
         </div>
 
         <div className="mov-list-container">
-          {loading ? (
+          {loading && transactions.length === 0 ? (
             <div className="mov-loading">
               <div className="loader" style={{ margin: '0 auto 20px' }}></div>
               Sincronizando transacciones...
@@ -181,46 +219,67 @@ export default function Movimientos() {
               <p>No se encontraron movimientos registrados.</p>
             </div>
           ) : (
-            <table className="mov-table">
-              <thead>
-                <tr>
-                  <th><FiCalendar style={{ marginRight: 8 }} /> Fecha</th>
-                  <th>Operación</th>
-                  <th>Detalle</th>
-                  <th><FiDollarSign style={{ marginRight: 8 }} /> Monto</th>
-                  <th>Saldo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((tx, idx) => (
-                  <tr key={tx.id} className={`stagger-${(idx % 3) + 1}`}>
-                    <td className="mov-date">{tx.fecha}</td>
-                    <td>
-                      <span className={`mov-type-badge ${tx.isDebit ? 'debit' : 'credit'}`}>
-                        {tx.isDebit ? <FiArrowUpRight style={{ marginRight: 6 }} /> : <FiArrowDownLeft style={{ marginRight: 6 }} />}
-                        {tx.tipo.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="mov-desc">{tx.desc}</td>
-                    <td className={`mov-amount ${tx.isDebit ? 'debit' : 'credit'}`}>
-                      {tx.isDebit ? '-' : '+'}${Number(tx.amount).toFixed(2)}
-                    </td>
-                    <td className="mov-saldo">
-                      ${Number(tx.saldoResultante || 0).toFixed(2)}
-                      {canRefund(tx) && (
-                        <button
-                          className="btn-refund-sm"
-                          onClick={() => handleOpenRefund(tx)}
-                          title="Solicitar Devolución"
-                        >
-                          <FiRotateCcw />
-                        </button>
-                      )}
-                    </td>
+            <div className="table-responsive">
+              <table className="mov-table">
+                <thead>
+                  <tr>
+                    <th><FiCalendar style={{ marginRight: 8 }} /> Fecha</th>
+                    <th>Operación</th>
+                    <th>Detalle</th>
+                    <th><FiDollarSign style={{ marginRight: 8 }} /> Monto</th>
+                    <th>Saldo</th>
+                    <th style={{ textAlign: 'center' }}>Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {transactions.map((tx, idx) => (
+                    <tr key={tx.id} className={`stagger-${(idx % 3) + 1}`}>
+                      <td className="mov-date">{tx.fecha}</td>
+                      <td>
+                        <span className={`mov-type-badge ${tx.isDebit ? 'debit' : 'credit'}`}>
+                          {tx.isDebit ? <FiArrowUpRight style={{ marginRight: 6 }} /> : <FiArrowDownLeft style={{ marginRight: 6 }} />}
+                          {tx.tipo.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="mov-desc">
+                        {tx.desc}
+                        {tx.isPending && <div style={{ fontSize: '0.75rem', color: 'orange', marginTop: 4 }}><FiAlertTriangle /> Pendiente</div>}
+                      </td>
+                      <td className={`mov-amount ${tx.isDebit ? 'debit' : 'credit'}`}>
+                        {tx.isDebit ? '-' : '+'}${Number(tx.amount).toFixed(2)}
+                      </td>
+                      <td className="mov-saldo">
+                        ${Number(tx.saldoResultante || 0).toFixed(2)}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
+                          {tx.isPending && (
+                            <button
+                              className="btn-verify-sm"
+                              onClick={() => handleCheckStatus(tx)}
+                              title="Verificar estado en Switch"
+                              style={{ background: '#e3f2fd', color: '#1976d2', border: '1px solid #bbdefb', padding: '4px 8px', borderRadius: 4, cursor: 'pointer' }}
+                            >
+                              <FiRefreshCw /> Verificar
+                            </button>
+                          )}
+
+                          {canRefund(tx) && (
+                            <button
+                              className="btn-refund-sm"
+                              onClick={() => handleOpenRefund(tx)}
+                              title="Solicitar Devolución / Reverso"
+                            >
+                              <FiRotateCcw /> Reversar
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
@@ -301,7 +360,6 @@ export default function Movimientos() {
         
         /* Refund Button Styles */
         .btn-refund-sm {
-          margin-left: 10px;
           background: #ffebee;
           border: 1px solid #ffcdd2;
           color: #c62828;
@@ -314,6 +372,22 @@ export default function Movimientos() {
         .btn-refund-sm:hover {
           background: #ffcdd2;
           transform: scale(1.05);
+        }
+
+        /* Verify Button Styles */
+        .btn-verify-sm {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            color: #1976d2;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn-verify-sm:hover {
+            background: #bbdefb;
+            transform: scale(1.05);
         }
 
         /* Modal Styles */

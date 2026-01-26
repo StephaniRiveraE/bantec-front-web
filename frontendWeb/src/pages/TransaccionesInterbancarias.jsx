@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { realizarTransferenciaInterbancaria, getBancos } from '../services/bancaApi'
+import { realizarTransferenciaInterbancaria, getBancos, getTransferStatus } from '../services/bancaApi'
 import { useNavigate } from "react-router-dom";
 import { FiHash, FiUser, FiArrowRight, FiCheck, FiDownload, FiInfo, FiCreditCard, FiActivity } from 'react-icons/fi';
 import { MdOutlineAccountBalance } from 'react-icons/md';
@@ -108,15 +108,14 @@ export default function TransaccionesInterbancarias() {
         setStatusMessage('Conectando con la red bancaria...');
         setLoading(true);
 
-        // Timer para cambiar mensajes visuales (Simulación de progreso mientras el backend hace polling)
+        // Timers visuales para UX
         const msgTimer = setTimeout(() => {
-            setProcessingState('VALIDATING');
-            setStatusMessage('Validando cuenta en banco destino...');
-        }, 2000);
+            if (processingState !== 'ERROR') setStatusMessage('Validando cuenta en banco destino...');
+        }, 1500);
 
         const msgTimer2 = setTimeout(() => {
-            setStatusMessage('Confirmando fondos...');
-        }, 8000);
+            if (processingState !== 'ERROR') setStatusMessage('Confirmando fondos...');
+        }, 6000);
 
         try {
             const request = {
@@ -131,41 +130,102 @@ export default function TransaccionesInterbancarias() {
                 descripcion: `Transferencia a ${toName} - Banco ${bankBic}`
             }
 
-            console.log("Enviando Tx con Idempotency-Key:", currentRef);
+            console.log("1. Enviando POST al Switch (TxID: " + currentRef + ")");
+            // 1. Envío Inicial (Fase 1)
+            const initialRes = await realizarTransferenciaInterbancaria(request);
 
-            // Esta llamada al backend demora ~15s porque el Backend hace el Polling Sync.
-            await realizarTransferenciaInterbancaria(request);
+            // Si el backend responde, asumimos que la solicitud fue aceptada (201 Created o similar)
+            // IMPORTANTE: NO confirmamos éxito aún. Iniciamos Polling.
+
+            const txIdInstruccion = initialRes.idInstruccion || initialRes.id || currentRef;
+            console.log("2. Respuesta Inicial OK. Iniciando Polling para ID: " + txIdInstruccion);
+
+            // Estado B: Validando (Polling)
+            setProcessingState('VALIDATING');
+
+            let attempts = 0;
+            let finalState = 'PENDING';
+            let finalReason = '';
+
+            // Ciclo de Polling (Fase 2) - Máximo 10 intentos (15s aprox)
+            while (attempts < 10) {
+                await new Promise(r => setTimeout(r, 1500)); // Esperar 1.5s
+
+                try {
+                    console.log(`... Polling intento ${attempts + 1}/10`);
+                    const pollRes = await getTransferStatus(txIdInstruccion);
+
+                    // Normalizar estado (Soporte para diferentes respuestas del switch)
+                    const status = pollRes.estado || pollRes.status;
+                    console.log("   Estado recibido: ", status);
+
+                    if (status === 'COMPLETED' || status === 'APROBADA' || status === 'EXITOSA') {
+                        finalState = 'COMPLETED';
+                        break;
+                    }
+
+                    if (status === 'FAILED' || status === 'REJECTED' || status === 'RECHAZADA') {
+                        finalState = 'FAILED';
+                        finalReason = pollRes.mensaje || pollRes.motivo || pollRes.error || "Operación rechazada por el banco destino.";
+                        break;
+                    }
+
+                } catch (pollErr) {
+                    console.warn("Error en polling (red o 404), reintentando...", pollErr);
+                }
+
+                attempts++;
+            }
 
             clearTimeout(msgTimer);
             clearTimeout(msgTimer2);
 
-            // Estado C: Éxito
-            addTransaction({
-                accId: fromAccId,
-                amount: -(Number(amount)),
-                tipo: 'TRANSFERENCIA_SALIDA',
-                desc: `Transf. Interbancaria a ${toName}`,
-                fecha: new Date().toISOString()
-            });
-            await refreshAccounts();
+            // 3. Resolución Final
+            if (finalState === 'COMPLETED') {
+                // Estado C: Éxito REAL
+                await addTransaction({
+                    accId: fromAccId,
+                    amount: -(Number(amount)),
+                    tipo: 'TRANSFERENCIA_SALIDA',
+                    desc: `Transf. Interbancaria a ${toName}`,
+                    fecha: new Date().toISOString(),
+                    ref: txIdInstruccion
+                });
+                await refreshAccounts();
 
-            setProcessingState('SUCCESS');
-            setIdempotencyKey(null);
-            setStep(4);
+                setProcessingState('SUCCESS');
+                setIdempotencyKey(null); // Limpiar para nueva operación
+                setStep(4);
+
+            } else if (finalState === 'FAILED') {
+                // Estado D: Fallo Confirmado
+                throw new Error(finalReason || "La transferencia fue rechazada por el sistema.");
+
+            } else {
+                // Estado E: Timeout (Sigue Pendiente)
+                console.warn("Timeout de Polling: Estado sigue pendiente.");
+                setProcessingState('WARNING');
+                setStep(4);
+            }
 
         } catch (err) {
             clearTimeout(msgTimer);
             clearTimeout(msgTimer2);
 
-            // Estado D: Fallo
+            console.error("Error en flujo de transacción:", err);
+
+            // Estado D: Fallo (Rojo)
             setProcessingState('ERROR');
 
-            // Si el error es por Timeout del backend
-            if (err.message && (err.message.includes("Timeout") || err.message.includes("tiempo"))) {
-                setError("La operación está tardando más de lo normal. Le notificaremos por SMS.");
-            } else {
-                setError(err.message || 'Error en la transferencia interbancaria');
-            }
+            // Extraer mensaje limpio
+            let errorMsg = err.message || 'Error desconocido';
+            if (errorMsg.includes("Timeout")) errorMsg = "Tiempo de espera agotado.";
+
+            setError(errorMsg);
+
+            // Ir al paso 4 para mostrar el resultado Visual (Rojo)
+            setStep(4);
+
         } finally {
             setLoading(false);
         }
@@ -285,66 +345,115 @@ export default function TransaccionesInterbancarias() {
                     )}
 
                     {step === 3 && (
-                        <div className="step-content">
-                            <h3 style={{ marginBottom: 20, color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>Revisión de Datos Final</h3>
-                            <div className="transfer-summary">
-                                <div className="summary-item">
-                                    <span className="summary-label">Monto</span>
-                                    <span className="summary-value amount-highlight">${Number(amount).toFixed(2)}</span>
+                        loading ? (
+                            <div className="step-content" style={{ textAlign: 'center', padding: '40px 20px', minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                                <div className="spinner-border text-warning" role="status" style={{ width: '4rem', height: '4rem', marginBottom: '24px', borderWidth: '4px' }}></div>
+                                <h3 className="animate-pulse" style={{ color: 'var(--accent-gold)', fontSize: '1.4rem', marginBottom: '16px' }}>Enviando al Switch...</h3>
+                                <p style={{ fontSize: '1.1rem', color: '#fff', fontWeight: '500' }}>{statusMessage}</p>
+                                <div style={{ height: '4px', width: '60px', background: 'rgba(255,255,255,0.1)', margin: '20px auto', borderRadius: '2px' }}>
+                                    <div style={{ height: '100%', width: '100%', background: 'var(--accent-gold)', borderRadius: '2px', animation: 'progress 2s infinite ease-in-out' }}></div>
                                 </div>
-                                <div className="summary-item">
-                                    <span className="summary-label">Comisión</span>
-                                    <span className="summary-value">$0.00</span>
-                                </div>
-                                <div className="summary-item">
-                                    <span className="summary-label">Destino</span>
-                                    <span className="summary-value">{getBankName(bankBic)}</span>
-                                </div>
-                                <div className="summary-item">
-                                    <span className="summary-label">Beneficiario</span>
-                                    <span className="summary-value">{toName}</span>
-                                </div>
-                                <div className="summary-item">
-                                    <span className="summary-label">N° Cuenta</span>
-                                    <span className="summary-value">{toAccount}</span>
-                                </div>
+                                <small style={{ color: 'var(--text-muted)', marginTop: '10px' }}>Por favor no cierre esta ventana ni recargue la página.</small>
+                                <style>{`
+                                    @keyframes progress { 0% { width: 0%; opacity: 0.5; } 50% { width: 100%; opacity: 1; } 100% { width: 0%; left: 100%; opacity: 0.5; } }
+                                    .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+                                    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
+                                `}</style>
                             </div>
-                            {error && <div className="transfer-error" style={{ marginTop: 20 }}><FiInfo /> {error}</div>}
-                            <div className="transfer-button-row">
+                        ) : (
+                            <div className="step-content">
+                                <h3 style={{ marginBottom: 20, color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>Revisión de Datos Final</h3>
+                                <div className="transfer-summary">
+                                    <div className="summary-item">
+                                        <span className="summary-label">Monto</span>
+                                        <span className="summary-value amount-highlight">${Number(amount).toFixed(2)}</span>
+                                    </div>
+                                    <div className="summary-item">
+                                        <span className="summary-label">Comisión</span>
+                                        <span className="summary-value">$0.00</span>
+                                    </div>
+                                    <div className="summary-item">
+                                        <span className="summary-label">Destino</span>
+                                        <span className="summary-value">{getBankName(bankBic)}</span>
+                                    </div>
+                                    <div className="summary-item">
+                                        <span className="summary-label">Beneficiario</span>
+                                        <span className="summary-value">{toName}</span>
+                                    </div>
+                                    <div className="summary-item">
+                                        <span className="summary-label">N° Cuenta</span>
+                                        <span className="summary-value">{toAccount}</span>
+                                    </div>
+                                </div>
+                                {error && <div className="transfer-error" style={{ marginTop: 20 }}><FiInfo /> {error}</div>}
+
                                 <div className="transfer-button-row">
-                                    {loading ? (
-                                        <div className="processing-indicator" style={{ width: '100%', textAlign: 'center', padding: '20px' }}>
-                                            <div className="spinner-border text-warning" role="status" style={{ marginBottom: '10px' }}></div>
-                                            <p style={{ color: 'var(--accent-gold)', fontWeight: 'bold' }}>{statusMessage}</p>
-                                            <small style={{ color: '#ccc' }}>Por favor no cierre esta ventana</small>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <button className="btn-back" onClick={() => {
-                                                setStep(2);
-                                                setIdempotencyKey(null);
-                                            }} disabled={loading}>Modificar</button>
-                                            <button className="btn btn-transfer" onClick={confirmTransfer} disabled={loading}>
-                                                Confirmar y Enviar
-                                            </button>
-                                        </>
-                                    )}
+                                    <button className="btn-back" onClick={() => {
+                                        setStep(2);
+                                        setIdempotencyKey(null);
+                                    }} disabled={loading}>Modificar</button>
+                                    <button className="btn btn-transfer" onClick={confirmTransfer} disabled={loading}>
+                                        Confirmar y Enviar
+                                    </button>
                                 </div>
                             </div>
-                        </div>
+                        )
                     )}
 
                     {step === 4 && (
                         <div className="step-content success-state" style={{ textAlign: 'center' }}>
-                            <div className="success-icon"><FiCheck /></div>
-                            <h2 className="success-title">Enviado a Red</h2>
-                            <p style={{ color: 'var(--text-muted)', marginBottom: 30 }}>La transferencia está siendo procesada por el Switch Interbancario.</p>
-                            <div className="transfer-button-row">
-                                <button className="btn-back" onClick={() => navigate('/movimientos')}>Ir al Inicio</button>
-                                <button className="btn btn-transfer" style={{ background: 'var(--grad-gold)', color: '#000' }} onClick={downloadReceipt}>
-                                    <FiDownload style={{ marginRight: 8 }} /> Comprobante
-                                </button>
-                            </div>
+                            {processingState === 'WARNING' ? (
+                                <>
+                                    <div className="success-icon" style={{ background: 'rgba(255, 193, 7, 0.2)', color: '#ffc107' }}>
+                                        <FiActivity />
+                                    </div>
+                                    <h2 className="success-title" style={{ color: '#ffc107' }}>En Proceso de Validación</h2>
+                                    <p style={{ color: 'var(--text-muted)', marginBottom: 30 }}>
+                                        La operación está tardando más de lo normal. Estamos validando el estado final con el banco destino.
+                                        <br /><br />
+                                        <strong>Le notificaremos por mensaje cuando se complete.</strong>
+                                    </p>
+                                    <div className="transfer-button-row">
+                                        <button className="btn-back" onClick={() => navigate('/movimientos')}>Ir al Inicio</button>
+                                    </div>
+                                </>
+                            ) : processingState === 'ERROR' ? (
+                                <>
+                                    <div className="success-icon" style={{ background: 'rgba(220, 53, 69, 0.2)', color: '#dc3545' }}>
+                                        <FiInfo />
+                                    </div>
+                                    <h2 className="success-title" style={{ color: '#dc3545' }}>Transferencia Rechazada</h2>
+                                    <p style={{ color: 'var(--text-muted)', marginBottom: '10px' }}>
+                                        La operación no pudo completarse.
+                                    </p>
+                                    <div style={{ background: 'rgba(220, 53, 69, 0.1)', border: '1px solid #dc3545', padding: '15px', borderRadius: '8px', marginBottom: '30px', color: '#ffadad', fontSize: '0.9rem' }}>
+                                        {error}
+                                    </div>
+                                    <div className="transfer-button-row">
+                                        <button className="btn-back" onClick={() => navigate('/movimientos')}>Cancelar</button>
+                                        <button className="btn btn-transfer" onClick={() => {
+                                            setStep(2); // Volver a editar
+                                            setIdempotencyKey(null); // Nueva intentona
+                                            setProcessingState('IDLE');
+                                            setError('');
+                                        }}>Intentar de Nuevo</button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="success-icon"><FiCheck /></div>
+                                    <h2 className="success-title">¡Transferencia Exitosa!</h2>
+                                    <p style={{ color: 'var(--text-muted)', marginBottom: 30 }}>
+                                        Su dinero ha sido transferido correctamente a {toName}.
+                                    </p>
+                                    <div className="transfer-button-row">
+                                        <button className="btn-back" onClick={() => navigate('/movimientos')}>Ir al Inicio</button>
+                                        <button className="btn btn-transfer" style={{ background: 'var(--grad-gold)', color: '#000' }} onClick={downloadReceipt}>
+                                            <FiDownload style={{ marginRight: 8 }} /> Comprobante
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>

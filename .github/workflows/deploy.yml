@@ -61,31 +61,18 @@ jobs:
               "$PROJECT_DIR/generate-mtls-certs.sh"
             fi
 
-            # Certificados SSL para Nginx (DuckDNS)
-            DOMAIN="bantec-bank.duckdns.org"
-            echo "🌐 Configurando dominio: $DOMAIN"
-            
-            # --- PASO CRÍTICO: Actualizar IP en DuckDNS ---
-            # Esto garantiza que el dominio apunte a ESTA máquina antes de pedir el certificado
-            echo "📡 Actualizando DNS en DuckDNS..."
-            if [ -n "${{ secrets.DUCKDNS_TOKEN }}" ]; then
-               curl -k "https://www.duckdns.org/update?domains=bantec-bank&token=${{ secrets.DUCKDNS_TOKEN }}&ip="
-               echo "✅ DNS actualizado."
-            else
-               echo "⚠️ NO SE ENCONTRÓ DUCKDNS_TOKEN EN SECRETOS. EL DNS PODRÍA NO ESTAR ACTUALIZADO."
-            fi
-            
-            # Actualizar nginx.conf con el dominio real
-            sed -i "s/bantec-bank\.duckdns\.org/$DOMAIN/g" "$PROJECT_DIR/nginx/nginx.conf"
-            
+
             # === GESTIÓN ROBUSTA DE SSL (MÉTODO WEBROOT) ===
             DOMAIN="bantec-bank.duckdns.org"
             
             # 1. Actualizar DNS
-            echo "� Actualizando DNS en DuckDNS..."
+            echo "📡 Actualizando DNS en DuckDNS..."
             if [ -n "${{ secrets.DUCKDNS_TOKEN }}" ]; then
                curl -k "https://www.duckdns.org/update?domains=bantec-bank&token=${{ secrets.DUCKDNS_TOKEN }}&ip="
                echo "✅ Solicitud de actualización enviada."
+               
+               echo "zzz Esperando 60s para propagación DNS..."
+               sleep 60
             else
                echo "⚠️ FALTAN SECRETOS DE DUCKDNS"
             fi
@@ -115,18 +102,19 @@ jobs:
             sleep 15
 
             # 5. Intentar obtener/renovar certificado REAL con Certbot (Webroot)
-            # Este método usa el Nginx corriendo para validar el dominio (puerto 80)
+            # - Si el cert actual es self-signed (dummy), Certbot lo reemplazará.
+            # - Si ya es válido, --keep-until-expiring lo mantendrá.
             echo "🛡️ Ejecutando Certbot con método WEBROOT..."
             
             sudo docker-compose -f docker-compose.prod.yml run --rm --entrypoint "\
               certbot certonly --webroot -w /var/www/certbot \
-              --force-renewal \
+              --keep-until-expiring \
               --email arcbank2@gmail.com \
               -d $DOMAIN \
               --agree-tos \
-              --non-interactive" certbot || echo "⚠️ Certbot falló o ya tiene certificados al día."
+              --non-interactive" certbot
 
-            # 6. Recargar Nginx para tomar el nuevo certificado (si se generó)
+            # 6. Recargar Nginx para tomar el nuevo certificado
             echo "🔄 Recargando Nginx para aplicar certificados..."
             sudo docker-compose -f docker-compose.prod.yml exec -T nginx-proxy nginx -s reload
 
