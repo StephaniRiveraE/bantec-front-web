@@ -10,7 +10,8 @@ const ISO_ERROR_MAP = {
   "MS03": "Hubo un problema de comunicación con el otro banco. Intenta en unos minutos.",
   "AG01": "⚠️ OPERACIÓN RESTRINGIDA: Su institución está en modo de cierre operativo (Solo Recepción).",
   "BE01": "Los datos del destinatario no coinciden. Por seguridad, no se procesó.",
-  "RC01": "Error en los datos enviados. Contacta a soporte."
+  "RC01": "Error en los datos enviados. Contacta a soporte.",
+  "CH03": "📉 El monto excede el límite permitido ($10k)."
 };
 
 async function request(path, options = {}) {
