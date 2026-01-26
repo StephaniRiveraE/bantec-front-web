@@ -223,60 +223,73 @@ export default function Movimientos() {
               <table className="mov-table">
                 <thead>
                   <tr>
-                    <th><FiCalendar style={{ marginRight: 8 }} /> Fecha</th>
-                    <th>Operación</th>
-                    <th>Detalle</th>
-                    <th><FiDollarSign style={{ marginRight: 8 }} /> Monto</th>
-                    <th>Saldo</th>
-                    <th style={{ textAlign: 'center' }}>Acciones</th>
+                    <th>FECHA / HORA</th>
+                    <th>CONCEPTO DE OPERACIÓN</th>
+                    <th>TIPO</th>
+                    <th style={{ textAlign: 'right' }}>MONTO</th>
+                    <th style={{ textAlign: 'right' }}>BALANCE RESULTANTE</th>
+                    <th style={{ textAlign: 'center' }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.map((tx, idx) => (
-                    <tr key={tx.id} className={`stagger-${(idx % 3) + 1}`}>
-                      <td className="mov-date">{tx.fecha}</td>
-                      <td>
-                        <span className={`mov-type-badge ${tx.isDebit ? 'debit' : 'credit'}`}>
-                          {tx.isDebit ? <FiArrowUpRight style={{ marginRight: 6 }} /> : <FiArrowDownLeft style={{ marginRight: 6 }} />}
-                          {tx.tipo.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="mov-desc">
-                        {tx.desc}
-                        {tx.isPending && <div style={{ fontSize: '0.75rem', color: 'orange', marginTop: 4 }}><FiAlertTriangle /> Pendiente</div>}
-                      </td>
-                      <td className={`mov-amount ${tx.isDebit ? 'debit' : 'credit'}`}>
-                        {tx.isDebit ? '-' : '+'}${Number(tx.amount).toFixed(2)}
-                      </td>
-                      <td className="mov-saldo">
-                        ${Number(tx.saldoResultante || 0).toFixed(2)}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
-                          {tx.isPending && (
-                            <button
-                              className="btn-verify-sm"
-                              onClick={() => handleCheckStatus(tx)}
-                              title="Verificar estado en Switch"
-                              style={{ background: '#e3f2fd', color: '#1976d2', border: '1px solid #bbdefb', padding: '4px 8px', borderRadius: 4, cursor: 'pointer' }}
-                            >
-                              <FiRefreshCw /> Verificar
-                            </button>
-                          )}
+                  {transactions.map((tx, idx) => {
+                    // Helper simple para limpiar descripción
+                    const getFriendlyDesc = (t) => {
+                      if (t.desc.includes("ERROR TÉCNICO") || t.desc.includes("Switch Error")) {
+                        if (t.desc.includes("AC01")) return "Transacción Rechazada (Cuenta Inválida)";
+                        if (t.desc.includes("422")) return "Transacción Rechazada (Datos inválidos)";
+                        if (t.desc.includes("504") || t.desc.includes("timeout")) return "Transacción Fallida (Tiempo de espera agotado)";
+                        return "Transacción Fallida (Error Técnico)";
+                      }
+                      if (t.desc.includes("RECHAZADA")) return "Transacción Rechazada";
+                      return t.desc;
+                    };
 
-                          {canRefund(tx) && (
-                            <button
-                              className="btn-refund-sm"
-                              onClick={() => handleOpenRefund(tx)}
-                              title="Solicitar Devolución / Reverso"
-                            >
-                              <FiRotateCcw /> Reversar
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                    return (
+                      <tr key={tx.id} className={`stagger-${(idx % 3) + 1}`}>
+                        <td className="mov-date">{tx.fecha}</td>
+                        <td className="mov-desc">
+                          <div style={{ fontWeight: 500, color: '#e0e0e0' }}>{getFriendlyDesc(tx)}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#888', marginTop: 3 }}>ID: {tx.id}</div>
+                          {tx.isPending && <div style={{ fontSize: '0.75rem', color: 'orange', marginTop: 4 }}><FiAlertTriangle /> En proceso</div>}
+                        </td>
+                        <td>
+                          <span className={`mov-type-badge ${tx.isDebit ? 'debit' : 'credit'}`}>
+                            {tx.tipo.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className={`mov-amount ${tx.isDebit ? 'debit' : 'credit'}`} style={{ textAlign: 'right' }}>
+                          {tx.isDebit ? '-' : '+'}${Number(tx.amount).toFixed(2)}
+                        </td>
+                        <td className="mov-saldo" style={{ textAlign: 'right' }}>
+                          ${Number(tx.saldoResultante || 0).toFixed(2)}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
+                            {tx.isPending && (
+                              <button
+                                className="btn-verify-sm"
+                                onClick={() => handleCheckStatus(tx)}
+                                title="Verificar estado"
+                              >
+                                <FiRefreshCw />
+                              </button>
+                            )}
+
+                            {canRefund(tx) && (
+                              <button
+                                className="btn-refund-sm"
+                                onClick={() => handleOpenRefund(tx)}
+                                title="Solicitar Devolución"
+                              >
+                                Solicitar Devolución
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
