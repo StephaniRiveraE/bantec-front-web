@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { realizarTransferenciaInterbancaria, getBancos } from '../services/bancaApi'
+import { realizarTransferenciaInterbancaria, getBancos, getTransferStatus } from '../services/bancaApi'
 import { useNavigate } from "react-router-dom";
 import { FiHash, FiUser, FiArrowRight, FiCheck, FiDownload, FiInfo, FiCreditCard, FiActivity } from 'react-icons/fi';
 import { MdOutlineAccountBalance } from 'react-icons/md';
@@ -108,15 +108,14 @@ export default function TransaccionesInterbancarias() {
         setStatusMessage('Conectando con la red bancaria...');
         setLoading(true);
 
-        // Timer para cambiar mensajes visuales (Simulación de progreso mientras el backend hace polling)
+        // Timers visuales para UX
         const msgTimer = setTimeout(() => {
-            setProcessingState('VALIDATING');
-            setStatusMessage('Validando cuenta en banco destino...');
-        }, 2000);
+            if (processingState !== 'ERROR') setStatusMessage('Validando cuenta en banco destino...');
+        }, 1500);
 
         const msgTimer2 = setTimeout(() => {
-            setStatusMessage('Confirmando fondos...');
-        }, 8000);
+            if (processingState !== 'ERROR') setStatusMessage('Confirmando fondos...');
+        }, 6000);
 
         try {
             const request = {
@@ -131,47 +130,98 @@ export default function TransaccionesInterbancarias() {
                 descripcion: `Transferencia a ${toName} - Banco ${bankBic}`
             }
 
-            console.log("Enviando Tx con Idempotency-Key:", currentRef);
+            console.log("1. Enviando POST al Switch (TxID: " + currentRef + ")");
+            // 1. Envío Inicial (Fase 1)
+            const initialRes = await realizarTransferenciaInterbancaria(request);
 
-            // Esta llamada al backend demora ~15s porque el Backend hace el Polling Sync.
-            const response = await realizarTransferenciaInterbancaria(request);
+            // Si el backend responde, asumimos que la solicitud fue aceptada (201 Created o similar)
+            // IMPORTANTE: NO confirmamos éxito aún. Iniciamos Polling.
+
+            const txIdInstruccion = initialRes.idInstruccion || initialRes.id || currentRef;
+            console.log("2. Respuesta Inicial OK. Iniciando Polling para ID: " + txIdInstruccion);
+
+            // Estado B: Validando (Polling)
+            setProcessingState('VALIDATING');
+
+            let attempts = 0;
+            let finalState = 'PENDING';
+            let finalReason = '';
+
+            // Ciclo de Polling (Fase 2) - Máximo 10 intentos (15s aprox)
+            while (attempts < 10) {
+                await new Promise(r => setTimeout(r, 1500)); // Esperar 1.5s
+
+                try {
+                    console.log(`... Polling intento ${attempts + 1}/10`);
+                    const pollRes = await getTransferStatus(txIdInstruccion);
+
+                    // Normalizar estado (Soporte para diferentes respuestas del switch)
+                    const status = pollRes.estado || pollRes.status;
+                    console.log("   Estado recibido: ", status);
+
+                    if (status === 'COMPLETED' || status === 'APROBADA' || status === 'EXITOSA') {
+                        finalState = 'COMPLETED';
+                        break;
+                    }
+
+                    if (status === 'FAILED' || status === 'REJECTED' || status === 'RECHAZADA') {
+                        finalState = 'FAILED';
+                        finalReason = pollRes.mensaje || pollRes.motivo || pollRes.error || "Operación rechazada por el banco destino.";
+                        break;
+                    }
+
+                } catch (pollErr) {
+                    console.warn("Error en polling (red o 404), reintentando...", pollErr);
+                }
+
+                attempts++;
+            }
 
             clearTimeout(msgTimer);
             clearTimeout(msgTimer2);
 
-            addTransaction({
-                accId: fromAccId,
-                amount: -(Number(amount)),
-                tipo: 'TRANSFERENCIA_SALIDA',
-                desc: `Transf. Interbancaria a ${toName}`,
-                fecha: new Date().toISOString()
-            });
-            await refreshAccounts();
+            // 3. Resolución Final
+            if (finalState === 'COMPLETED') {
+                // Estado C: Éxito REAL
+                await addTransaction({
+                    accId: fromAccId,
+                    amount: -(Number(amount)),
+                    tipo: 'TRANSFERENCIA_SALIDA',
+                    desc: `Transf. Interbancaria a ${toName}`,
+                    fecha: new Date().toISOString(),
+                    ref: txIdInstruccion
+                });
+                await refreshAccounts();
 
-            if (response && response.estado === 'PENDIENTE') {
-                // Estado E: Timeout / Pendiente
-                setProcessingState('WARNING');
-            } else {
-                // Estado C: Éxito
                 setProcessingState('SUCCESS');
-            }
+                setIdempotencyKey(null); // Limpiar para nueva operación
+                setStep(4);
 
-            setIdempotencyKey(null);
-            setStep(4);
+            } else if (finalState === 'FAILED') {
+                // Estado D: Fallo Confirmado
+                throw new Error(finalReason || "La transferencia fue rechazada por el sistema.");
+
+            } else {
+                // Estado E: Timeout (Sigue Pendiente)
+                console.warn("Timeout de Polling: Estado sigue pendiente.");
+                setProcessingState('WARNING');
+                setStep(4);
+            }
 
         } catch (err) {
             clearTimeout(msgTimer);
             clearTimeout(msgTimer2);
 
+            console.error("Error en flujo de transacción:", err);
+
             // Estado D: Fallo (Rojo)
             setProcessingState('ERROR');
 
-            // Si el error es por Timeout del backend
-            if (err.message && (err.message.includes("Timeout") || err.message.includes("tiempo"))) {
-                setError("La operación está tardando más de lo normal. Le notificaremos por SMS.");
-            } else {
-                setError(err.message || 'Error en la transferencia interbancaria');
-            }
+            // Extraer mensaje limpio
+            let errorMsg = err.message || 'Error desconocido';
+            if (errorMsg.includes("Timeout")) errorMsg = "Tiempo de espera agotado.";
+
+            setError(errorMsg);
 
             // Ir al paso 4 para mostrar el resultado Visual (Rojo)
             setStep(4);

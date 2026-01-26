@@ -8,7 +8,7 @@ const ISO_ERROR_MAP = {
   "AC01": "El número de cuenta o banco destino no existe. Verifícalo.",
   "AC04": "La cuenta destino está cerrada o inactiva.",
   "MS03": "Hubo un problema de comunicación con el otro banco. Intenta en unos minutos.",
-  "AG01": "Operación no permitida por políticas del banco.",
+  "AG01": "⚠️ OPERACIÓN RESTRINGIDA: Su institución está en modo de cierre operativo (Solo Recepción).",
   "BE01": "Los datos del destinatario no coinciden. Por seguridad, no se procesó.",
   "RC01": "Error en los datos enviados. Contacta a soporte."
 };
@@ -28,11 +28,20 @@ async function request(path, options = {}) {
     let msg = errorBody.mensaje || errorBody.error || res.statusText;
 
     // Lógica para mapear mensajes ISO 20022
-    if (msg && typeof msg === 'string') {
-      const codigoIso = msg.substring(0, 4).toUpperCase();
-      if (ISO_ERROR_MAP[codigoIso]) {
-        msg = `${ISO_ERROR_MAP[codigoIso]} (${msg})`;
+    let codigoIso = (errorBody.codigo || errorBody.code || "").toString().toUpperCase();
+
+    if (!ISO_ERROR_MAP[codigoIso] && msg && typeof msg === 'string') {
+      const tempCode = msg.substring(0, 4).toUpperCase();
+      if (ISO_ERROR_MAP[tempCode]) {
+        codigoIso = tempCode;
+      } else {
+        const match = msg.match(/\b([A-Z]{2}\d{2})\b/);
+        if (match) codigoIso = match[1];
       }
+    }
+
+    if (ISO_ERROR_MAP[codigoIso]) {
+      msg = `${ISO_ERROR_MAP[codigoIso]}`;
     }
 
     throw new Error(msg);
@@ -118,6 +127,11 @@ export async function getBancos() {
   }
 }
 
+export async function getTransferStatus(instructionId) {
+  // RF-04: Consulta de Estado
+  return await request(`/api/v2/switch/transfers/${instructionId}`);
+}
+
 const bancaApi = {
   getClientePorIdentificacion,
   getCuentaPorNumero,
@@ -126,7 +140,8 @@ const bancaApi = {
   realizarTransferencia,
   realizarTransferenciaInterbancaria,
   solicitarReverso,
-  getBancos
+  getBancos,
+  getTransferStatus
 }
 
 export default bancaApi;

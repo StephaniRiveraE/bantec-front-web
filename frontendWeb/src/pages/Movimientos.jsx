@@ -189,6 +189,7 @@ export default function Movimientos() {
                   <th>Detalle</th>
                   <th><FiDollarSign style={{ marginRight: 8 }} /> Monto</th>
                   <th>Saldo</th>
+                  <th style={{ textAlign: 'center' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -207,13 +208,15 @@ export default function Movimientos() {
                     </td>
                     <td className="mov-saldo">
                       ${Number(tx.saldoResultante || 0).toFixed(2)}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
                       {canRefund(tx) && (
                         <button
                           className="btn-refund-sm"
                           onClick={() => handleOpenRefund(tx)}
-                          title="Solicitar Devolución"
+                          title="Solicitar Devolución / Reverso"
                         >
-                          <FiRotateCcw />
+                          <FiRotateCcw style={{ marginRight: 4 }} /> Reversar
                         </button>
                       )}
                     </td>
