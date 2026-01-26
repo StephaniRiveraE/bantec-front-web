@@ -98,31 +98,56 @@ export default function Movimientos() {
     }
 
     if (!refToUse) {
-      return alert("⚠️ No se encontró una referencia válida para consultar al Switch.\n\nEs posible que la transacción no haya salido del banco.");
+      return alert("⚠️ No se encontró una referencia válida (UUID) de transacción.\n\nEs posible que la transacción interna no haya generado un ID de rastreo externo.");
     }
 
-    const confirmMsg = confirm(`Se consultará al Switch por la transacción:\n${refToUse}\n\n¿Continuar?`);
+    const confirmMsg = confirm(`Consultando al Switch por:\n${refToUse}\n\n¿Desea verificar el estado final?`);
     if (!confirmMsg) return;
 
     setLoading(true);
     try {
       const status = await getTransferStatus(refToUse);
-      console.log("Estado Switch:", status);
+      console.log("Respuesta Switch:", status);
 
-      if (status.estado === 'COMPLETED' || status.status === 'COMPLETED') {
-        alert("✅ ¡CONFIRMADO! La transacción fue EXITOSA.\n\nEl Switch confirma que el dinero llegó al destino.");
-        // Aquí podrías disparar una actualización al backend si existiera el endpoint
+      const estadoSwitch = (status.estado || status.status || "").toUpperCase();
+      const codigoSwitch = (status.codigo || "").toUpperCase();
+
+      // Criterios de Éxito Ampliados
+      const isSuccess = estadoSwitch === 'COMPLETED' || estadoSwitch === 'SUCCESS' || estadoSwitch === 'APROBADA' || codigoSwitch === 'AC00' || estadoSwitch === 'EXITOSA';
+
+      // Criterios de Fallo
+      const isFailed = estadoSwitch === 'FAILED' || estadoSwitch === 'REJECTED' || estadoSwitch === 'RECHAZADA' || estadoSwitch === 'FALLIDA';
+
+      if (isSuccess) {
+        alert("✅ ¡CONFIRMADO! Transacción EXITOSA.\n\nEl Switch ha validado que los fondos llegaron al destino correctamente.");
+
+        // Actualización Optimista de la UI (Local) para feedback inmediato
+        setTransactions(prev => prev.map(t => {
+          if (t.id === tx.id) {
+            return {
+              ...t,
+              estado: 'COMPLETADA',
+              isPending: false,
+              desc: t.desc.replace(/En proceso.*/, "") + " (Verificada)"
+            };
+          }
+          return t;
+        }));
+
+        // Intentar sincronizar backend
         loadMovements();
-      } else if (status.estado === 'FAILED' || status.status === 'FAILED') {
-        const motivo = status.mensaje || status.error || status.motivo || "Error desconocido";
-        alert("❌ TRANSACCIÓN FALLIDA\n\nEl Switch indica que falló por:\n" + motivo);
+
+      } else if (isFailed) {
+        const motivo = status.mensaje || status.error || status.motivo || "Error no especificado";
+        alert("❌ TRANSACCIÓN FALLIDA\n\nEl Switch indica fallo:\n" + motivo);
         loadMovements();
+
       } else {
-        alert(`ℹ️ ESTADO ACTUAL: ${status.estado || status.status}\n\nLa operación sigue en proceso o pendiente.`);
+        alert(`ℹ️ Estado Actual: ${estadoSwitch}\n\nEl Switch indica que la operación sigue en curso.`);
       }
     } catch (err) {
       console.error(err);
-      let errMsg = err.message || "Error de conexión";
+      let errMsg = err.message || "Error desconocido";
       if (errMsg.includes("Not Found") || errMsg.includes("404")) {
         errMsg = "La transacción no existe en el Switch (404).\nProbablemente nunca fue enviada o ya caducó.";
       }
