@@ -37,10 +37,8 @@ export default function Movimientos() {
     if (!selectedAccId) return
     setLoading(true)
     try {
-      const [resp] = await Promise.all([
-        getMovimientos(selectedAccId),
-        refreshAccounts()
-      ])
+      const resp = await getMovimientos(selectedAccId)
+      await refreshAccounts()
 
       const listaRaw = Array.isArray(resp) ? resp : []
       const movsAll = listaRaw.map((m, i) => {
@@ -62,16 +60,19 @@ export default function Movimientos() {
         // Detectar si es una transacción que quedó pendiente/en validación
         const isPending = (m.estado === 'PENDIENTE') || desc.includes("validación") || desc.includes("proceso");
 
+        // Prioridad de búsqueda de referencia para el Switch
+        const refSwitch = m.referencia || m.ref || m.transactionId || m.referenciaRed || m.externalId;
+
         return {
           id: m.idTransaccion || `mv-${i}`,
-          referencia: m.referencia || m.ref || m.transactionId, // Referencia para consultar Switch
+          referencia: refSwitch,
           fecha: fechaStr,
           desc: desc,
           tipo: m.tipoOperacion,
           amount: m.monto,
           saldoResultante: m.saldoResultante,
           isDebit: isDebit,
-          originalDate: m.fechaCreacion, // Guardar fecha original para validación
+          originalDate: m.fechaCreacion,
           estado: m.estado || 'COMPLETADA',
           isPending: isPending
         }
@@ -87,29 +88,45 @@ export default function Movimientos() {
 
   // --- Verificar Estado en Switch ---
   const handleCheckStatus = async (tx) => {
-    if (!tx.referencia) return alert("No se encontró referencia para consultar al Switch.");
+    // 1. Intentar obtener referencia válida
+    let refToUse = tx.referencia;
 
-    const confirmMsg = window.confirm("¿Desea consultar el estado actual de esta transferencia en el Switch?");
+    // Si no hay referencia, intentar extraerla de la descripción si tiene formato UUID
+    if (!refToUse && tx.desc) {
+      const match = tx.desc.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+      if (match) refToUse = match[0];
+    }
+
+    if (!refToUse) {
+      return alert("⚠️ No se encontró una referencia válida para consultar al Switch.\n\nEs posible que la transacción no haya salido del banco.");
+    }
+
+    const confirmMsg = confirm(`Se consultará al Switch por la transacción:\n${refToUse}\n\n¿Continuar?`);
     if (!confirmMsg) return;
 
     setLoading(true);
     try {
-      const status = await getTransferStatus(tx.referencia);
+      const status = await getTransferStatus(refToUse);
       console.log("Estado Switch:", status);
 
       if (status.estado === 'COMPLETED' || status.status === 'COMPLETED') {
-        alert("✅ TRANSACCIÓN COMPLETADA\n\nEl Switch ha confirmado el éxito de la operación.");
-        // Aquí idealmente llamaríamos al backend para actualizar el estado, 
-        // pero por ahora recargamos para ver si el backend ya se sincronizó (polling interno)
+        alert("✅ ¡CONFIRMADO! La transacción fue EXITOSA.\n\nEl Switch confirma que el dinero llegó al destino.");
+        // Aquí podrías disparar una actualización al backend si existiera el endpoint
         loadMovements();
       } else if (status.estado === 'FAILED' || status.status === 'FAILED') {
-        alert("❌ TRANSACCIÓN FALLIDA\n\nMotivo: " + (status.mensaje || status.error || "Desconocido"));
+        const motivo = status.mensaje || status.error || status.motivo || "Error desconocido";
+        alert("❌ TRANSACCIÓN FALLIDA\n\nEl Switch indica que falló por:\n" + motivo);
         loadMovements();
       } else {
-        alert("⚠️ ESTADO: " + (status.estado || status.status) + "\n\nLa operación sigue en proceso.");
+        alert(`ℹ️ ESTADO ACTUAL: ${status.estado || status.status}\n\nLa operación sigue en proceso o pendiente.`);
       }
     } catch (err) {
-      alert("Error consultando: " + err.message);
+      console.error(err);
+      let errMsg = err.message || "Error de conexión";
+      if (errMsg.includes("Not Found") || errMsg.includes("404")) {
+        errMsg = "La transacción no existe en el Switch (404).\nProbablemente nunca fue enviada o ya caducó.";
+      }
+      alert("Error consultando estado:\n" + errMsg);
     } finally {
       setLoading(false);
     }
