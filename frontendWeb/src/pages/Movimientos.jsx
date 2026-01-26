@@ -89,7 +89,7 @@ export default function Movimientos() {
   const handleCheckStatus = async (tx) => {
     if (!tx.referencia) return alert("No se encontró referencia para consultar al Switch.");
 
-    const confirmMsg = confirm("¿Desea consultar el estado actual de esta transferencia en el Switch?");
+    const confirmMsg = window.confirm("¿Desea consultar el estado actual de esta transferencia en el Switch?");
     if (!confirmMsg) return;
 
     setLoading(true);
