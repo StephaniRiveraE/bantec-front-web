@@ -169,6 +169,20 @@ export default function Movimientos() {
 
   const cuentaActual = state.user.accounts?.find(a => a.id == selectedAccId)
 
+  // Helper moved to scope
+  const getFriendlyDesc = (t) => {
+    if (!t) return '';
+    const desc = t.desc || '';
+    if (desc.includes("ERROR TÉCNICO") || desc.includes("Switch Error")) {
+      if (desc.includes("AC01")) return "Transacción Rechazada (Cuenta Inválida)";
+      if (desc.includes("422")) return "Transacción Rechazada (Datos inválidos)";
+      if (desc.includes("504") || desc.includes("timeout")) return "Transacción Fallida (Tiempo de espera agotado)";
+      return "Transacción Fallida (Error Técnico)";
+    }
+    if (desc.includes("RECHAZADA")) return desc; // Already parsed by backend
+    return desc;
+  };
+
   return (
     <div className="mov-page">
       <div className="mov-container">
@@ -233,18 +247,6 @@ export default function Movimientos() {
                 </thead>
                 <tbody>
                   {transactions.map((tx, idx) => {
-                    // Helper simple para limpiar descripción
-                    const getFriendlyDesc = (t) => {
-                      if (t.desc.includes("ERROR TÉCNICO") || t.desc.includes("Switch Error")) {
-                        if (t.desc.includes("AC01")) return "Transacción Rechazada (Cuenta Inválida)";
-                        if (t.desc.includes("422")) return "Transacción Rechazada (Datos inválidos)";
-                        if (t.desc.includes("504") || t.desc.includes("timeout")) return "Transacción Fallida (Tiempo de espera agotado)";
-                        return "Transacción Fallida (Error Técnico)";
-                      }
-                      if (t.desc.includes("RECHAZADA")) return "Transacción Rechazada";
-                      return t.desc;
-                    };
-
                     return (
                       <tr key={tx.id} className={`stagger-${(idx % 3) + 1}`}>
                         <td className="mov-date">{tx.fecha}</td>
@@ -312,7 +314,7 @@ export default function Movimientos() {
                 <div className="refund-summary">
                   <p><strong>Transacción:</strong> {refundTx?.id}</p>
                   <p><strong>Monto:</strong> ${Number(refundTx?.amount).toFixed(2)}</p>
-                  <p><strong>Beneficiario:</strong> {refundTx?.desc}</p>
+                  <p><strong>Beneficiario:</strong> {refundTx ? getFriendlyDesc(refundTx) : ''}</p>
                 </div>
 
                 <div className="form-group-refund">

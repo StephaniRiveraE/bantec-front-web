@@ -207,10 +207,18 @@ public class TransaccionServiceImpl implements TransaccionService {
                             if (switchResp != null && switchResp.getError() != null) {
                                 switchError = switchResp.getError().getMessage();
                             }
+                            
+                            // Parseo de Errores Técnicos a Amigables
+                            String friendlyError = "Error en destino";
+                            if (switchError.contains("AC01")) friendlyError = "Cuenta destino inválida / inexistente";
+                            else if (switchError.contains("AC03")) friendlyError = "Cuenta destino inválida (AC03)";
+                            else if (switchError.contains("timeout") || switchError.contains("504")) friendlyError = "Tiempo de espera agotado en destino";
+                            else if (switchError.length() > 50) friendlyError = "Error Técnico: " + switchError.substring(0, 50) + "...";
+                            else friendlyError = switchError;
 
                             trx.setEstado("FALLIDA");
                             trx.setSaldoResultante(saldoRevertido);
-                            trx.setDescripcion("RECHAZADA POR SWITCH: " + switchError);
+                            trx.setDescripcion("RECHAZADA: " + friendlyError);
 
                             Transaccion fallida = transaccionRepository.save(trx);
                             return mapearADTO(fallida, null);
@@ -336,8 +344,16 @@ public class TransaccionServiceImpl implements TransaccionService {
                         trx.setEstado("FALLIDA");
                         trx.setSaldoResultante(saldoRevertido);
                         String errorMsg = e.getMessage() != null ? e.getMessage() : "Error desconocido";
-                        if (errorMsg.length() > 200) errorMsg = errorMsg.substring(0, 200) + "...";
-                        trx.setDescripcion("ERROR TÉCNICO SWITCH: " + errorMsg);
+                        
+                        // Limpieza de mensaje de excepción
+                        String friendlyEx = "Error de comunicación";
+                        if (errorMsg.contains("AC01")) friendlyEx = "Cuenta destino inválida";
+                        else if (errorMsg.contains("504") || errorMsg.toLowerCase().contains("time out") || errorMsg.toLowerCase().contains("timed out")) friendlyEx = "El banco destino no responde";
+                        else if (errorMsg.contains("Connection refused")) friendlyEx = "Banco destino fuera de línea";
+                        else if (errorMsg.length() > 100) friendlyEx = errorMsg.substring(0, 100) + "...";
+                        else friendlyEx = errorMsg;
+
+                        trx.setDescripcion("RECHAZADA: " + friendlyEx);
 
                         Transaccion fallida = transaccionRepository.save(trx);
                         return mapearADTO(fallida, null);

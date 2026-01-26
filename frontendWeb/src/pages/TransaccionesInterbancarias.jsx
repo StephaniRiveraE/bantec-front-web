@@ -134,6 +134,19 @@ export default function TransaccionesInterbancarias() {
             // 1. Envío Inicial (Fase 1)
             const initialRes = await realizarTransferenciaInterbancaria(request);
 
+            // CHECK: Validación inmediata de rechazo (Fail-Fast)
+            const initStatus = initialRes.estado || initialRes.status;
+            if (initStatus === 'FALLIDA' || initStatus === 'FAILED' || initStatus === 'RECHAZADA') {
+                let rawMsg = initialRes.mensaje || initialRes.descripcion || "Operación rechazada por el banco destino.";
+
+                // Limpieza de mensaje para UX
+                if (rawMsg.includes("AC01") || rawMsg.includes("Cuenta inválida")) rawMsg = "La cuenta destino no existe o es inválida.";
+                if (rawMsg.includes("504") || rawMsg.includes("Timeout")) rawMsg = "El banco destino no responde (Timeout).";
+                if (rawMsg.includes("Fondos insuficientes")) rawMsg = "Fondos insuficientes en cuenta origen.";
+
+                throw new Error(rawMsg);
+            }
+
             // Si el backend responde, asumimos que la solicitud fue aceptada (201 Created o similar)
             // IMPORTANTE: NO confirmamos éxito aún. Iniciamos Polling.
 
