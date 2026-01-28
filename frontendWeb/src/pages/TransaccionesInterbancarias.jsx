@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { realizarTransferenciaInterbancaria, getBancos, getTransferStatus } from '../services/bancaApi'
+import { realizarTransferenciaInterbancaria, getBancos, getTransferStatus, validarCuentaExterna } from '../services/bancaApi'
 import { useNavigate } from "react-router-dom";
 import { FiHash, FiUser, FiArrowRight, FiCheck, FiDownload, FiInfo, FiCreditCard, FiActivity } from 'react-icons/fi';
 import { MdOutlineAccountBalance } from 'react-icons/md';
@@ -23,6 +23,7 @@ export default function TransaccionesInterbancarias() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [loadingBanks, setLoadingBanks] = useState(false);
+    const [validationMsg, setValidationMsg] = useState("");
 
     // Carga de bancos dinámica desde el Switch vía Backend BANTEC
     useEffect(() => {
@@ -66,8 +67,34 @@ export default function TransaccionesInterbancarias() {
 
     const fromAccount = accounts.find(a => a.id === fromAccId) || accounts[0] || { number: '---', balance: 0 };
 
+    const handleValidateAccount = async () => {
+        if (!bankBic) return setError("Seleccione un banco destino.");
+        if (!toAccount) return setError("Ingrese un número de cuenta.");
+
+        setError("");
+        setValidationMsg("");
+        setLoading(true);
+
+        try {
+            const resp = await validarCuentaExterna(bankBic, toAccount);
+
+            if (resp && resp.status === "SUCCESS" && resp.data.exists) {
+                setToName(resp.data.ownerName);
+                setValidationMsg(`✅ Cuenta validada: ${resp.data.ownerName}`);
+            } else {
+                setValidationMsg("");
+                throw new Error(resp?.data?.mensaje || "No se pudo validar la cuenta en el banco destino.");
+            }
+        } catch (e) {
+            console.error(e);
+            setError(e.message || "Error en validación de cuenta.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const goToStep2 = () => {
-        if (!toAccount || !bankBic || !toName) return setError("Todos los campos son obligatorios.");
+        if (!toAccount || !bankBic || !toName) return setError("Todos los campos son obligatorios. Valide la cuenta si es posible.");
         if (!/^\d+$/.test(toAccount)) return setError("El número de cuenta solo debe contener números.");
         if (toAccount.length < 6) return setError("El número de cuenta parece inválido.");
         setError("");
@@ -287,7 +314,12 @@ export default function TransaccionesInterbancarias() {
                         <div className="step-content">
                             <div className="transfer-form-group">
                                 <label><MdOutlineAccountBalance /> Banco Destino</label>
-                                <select className="transfer-input" value={bankBic} onChange={e => setBankBic(e.target.value)}>
+                                <select className="transfer-input" value={bankBic} onChange={e => {
+                                    setBankBic(e.target.value);
+                                    setValidationMsg("");
+                                    setError("");
+                                    setToName("");
+                                }}>
                                     <option value="">Seleccione Entidad</option>
                                     {banks.map((b) => (
                                         <option key={b.id || b.codigo} value={b.codigo || b.id}>
@@ -298,13 +330,26 @@ export default function TransaccionesInterbancarias() {
                             </div>
                             <div className="transfer-form-group">
                                 <label><FiHash /> N° de Cuenta Externo</label>
-                                <input
-                                    className="transfer-input"
-                                    value={toAccount}
-                                    onChange={(e) => setToAccount(e.target.value.replace(/\D/g, ''))}
-                                    placeholder="Ingrese número de cuenta"
-                                />
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <input
+                                        className="transfer-input"
+                                        value={toAccount}
+                                        onChange={(e) => setToAccount(e.target.value.replace(/\D/g, ''))}
+                                        placeholder="Ingrese número de cuenta"
+                                    />
+                                    <button
+                                        className="btn"
+                                        style={{ width: 'auto', padding: '0 15px', background: 'var(--primary)', fontSize: '0.9rem' }}
+                                        onClick={handleValidateAccount}
+                                        disabled={loading || !toAccount || !bankBic}
+                                    >
+                                        {loading ? '...' : 'Validar'}
+                                    </button>
+                                </div>
                             </div>
+
+                            {validationMsg && <div className="success-msg" style={{ color: '#4caf50', marginBottom: 15, fontSize: '0.9rem' }}>{validationMsg}</div>}
+
                             <div className="transfer-form-group">
                                 <label><FiUser /> Nombre Beneficiario</label>
                                 <input
