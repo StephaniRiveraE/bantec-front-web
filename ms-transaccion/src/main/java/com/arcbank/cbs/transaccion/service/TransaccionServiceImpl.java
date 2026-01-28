@@ -880,20 +880,26 @@ public class TransaccionServiceImpl implements TransaccionService {
                     Map<String, Object> cliente = clienteClient.obtenerCliente(idCliente);
 
                     if (cliente != null) {
-                        // Assuming cliente map has "nombres" and "apellidos" or just "nombre"
-                        // Based on typical DTOs seen in other files, let's try to construct a full
-                        // name.
                         String nombre = "";
-                        if (cliente.get("nombres") != null)
-                            nombre += cliente.get("nombres");
-                        if (cliente.get("apellidos") != null)
-                            nombre += " " + cliente.get("apellidos");
 
-                        if (nombre.trim().isEmpty() && cliente.get("nombre") != null) {
+                        // FIX: El DTO de Cliente devuelve "nombreCompleto", no "nombres"/"apellidos"
+                        if (cliente.get("nombreCompleto") != null) {
+                            nombre = cliente.get("nombreCompleto").toString();
+                        } else if (cliente.get("nombres") != null || cliente.get("apellidos") != null) {
+                            // Fallback anterior por si acaso
+                            if (cliente.get("nombres") != null)
+                                nombre += cliente.get("nombres");
+                            if (cliente.get("apellidos") != null)
+                                nombre += " " + cliente.get("apellidos");
+                        } else if (cliente.get("nombre") != null) {
                             nombre = cliente.get("nombre").toString();
                         }
 
-                        data.setOwnerName(nombre.trim());
+                        if (!nombre.trim().isEmpty()) {
+                            data.setOwnerName(nombre.trim());
+                        } else {
+                            data.setOwnerName("Cliente BANTEC");
+                        }
                     } else {
                         data.setOwnerName("Cliente BANTEC");
                     }
