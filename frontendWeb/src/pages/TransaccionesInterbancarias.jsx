@@ -344,11 +344,21 @@ export default function TransaccionesInterbancarias() {
                                     />
                                     <button
                                         className="btn"
-                                        style={{ width: 'auto', padding: '0 15px', background: 'var(--primary)', fontSize: '0.9rem' }}
+                                        style={{
+                                            width: 'auto',
+                                            padding: '0 20px',
+                                            background: (loading || !toAccount || !bankBic) ? 'rgba(255,255,255,0.1)' : 'var(--accent-primary)',
+                                            color: (loading || !toAccount || !bankBic) ? 'rgba(255,255,255,0.3)' : '#000',
+                                            cursor: (loading || !toAccount || !bankBic) ? 'not-allowed' : 'pointer',
+                                            fontWeight: 'bold',
+                                            fontSize: '0.9rem',
+                                            border: 'none',
+                                            transition: 'all 0.3s'
+                                        }}
                                         onClick={handleValidateAccount}
                                         disabled={loading || !toAccount || !bankBic}
                                     >
-                                        {loading ? '...' : 'Validar'}
+                                        {loading ? 'BUSCANDO...' : 'VALIDAR'}
                                     </button>
                                 </div>
                             </div>
