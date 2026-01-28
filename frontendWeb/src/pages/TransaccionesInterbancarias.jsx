@@ -334,7 +334,12 @@ export default function TransaccionesInterbancarias() {
                                     <input
                                         className="transfer-input"
                                         value={toAccount}
-                                        onChange={(e) => setToAccount(e.target.value.replace(/\D/g, ''))}
+                                        onChange={(e) => {
+                                            setToAccount(e.target.value.replace(/\D/g, ''));
+                                            setToName("");
+                                            setValidationMsg("");
+                                            setError("");
+                                        }}
                                         placeholder="Ingrese número de cuenta"
                                     />
                                     <button
@@ -355,8 +360,9 @@ export default function TransaccionesInterbancarias() {
                                 <input
                                     className="transfer-input"
                                     value={toName}
-                                    onChange={e => setToName(e.target.value)}
-                                    placeholder="Nombre del titular"
+                                    readOnly
+                                    style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
+                                    placeholder="Se completará al validar..."
                                 />
                             </div>
                             {error && <div className="transfer-error"><FiInfo /> {error}</div>}
