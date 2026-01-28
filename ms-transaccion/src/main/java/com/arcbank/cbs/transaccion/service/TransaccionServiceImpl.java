@@ -207,15 +207,19 @@ public class TransaccionServiceImpl implements TransaccionService {
                             if (switchResp != null && switchResp.getError() != null) {
                                 switchError = switchResp.getError().getMessage();
                             }
-                            
+
                             // Parseo de Errores Técnicos a Amigables
                             String friendlyError = "Error en destino";
                             String lowerError = switchError.toLowerCase();
-                            
-                            if (lowerError.contains("ac01")) friendlyError = "Cuenta destino inválida / inexistente";
-                            else if (lowerError.contains("ac03")) friendlyError = "Cuenta destino inválida (AC03)";
-                            else if (lowerError.contains("timeout") || lowerError.contains("504")) friendlyError = "Tiempo de espera agotado en destino";
-                            else if (lowerError.contains("fondos")) friendlyError = "Fondos insuficientes";
+
+                            if (lowerError.contains("ac01"))
+                                friendlyError = "Cuenta destino inválida / inexistente";
+                            else if (lowerError.contains("ac03"))
+                                friendlyError = "Cuenta destino inválida (AC03)";
+                            else if (lowerError.contains("timeout") || lowerError.contains("504"))
+                                friendlyError = "Tiempo de espera agotado en destino";
+                            else if (lowerError.contains("fondos"))
+                                friendlyError = "Fondos insuficientes";
                             else {
                                 // Para errores Offline, Mantenimiento, Suspendido o Técnicos desconocidos
                                 friendlyError = "Error de comunicación con la entidad financiera";
@@ -229,8 +233,9 @@ public class TransaccionServiceImpl implements TransaccionService {
                             return mapearADTO(fallida, null);
                         }
 
-                        log.info("✅ [BANTEC] Transferencia aceptada por el switch (ACK). Iniciando Polling de confirmación...");
-                        
+                        log.info(
+                                "✅ [BANTEC] Transferencia aceptada por el switch (ACK). Iniciando Polling de confirmación...");
+
                         // POLLING SÍNCRONO (15 segundos máx)
                         boolean confirmado = false;
                         String ultimoEstado = "PENDING";
@@ -245,27 +250,34 @@ public class TransaccionServiceImpl implements TransaccionService {
                             }
 
                             try {
-                                SwitchTransferResponse statusResp = switchClient.consultarEstadoTransferencia(trx.getReferencia());
+                                SwitchTransferResponse statusResp = switchClient
+                                        .consultarEstadoTransferencia(trx.getReferencia());
                                 if (statusResp != null && statusResp.getData() != null) {
                                     ultimoEstado = statusResp.getData().getEstado();
-                                    
-                                    if ("COMPLETED".equalsIgnoreCase(ultimoEstado) || "EXITOSA".equalsIgnoreCase(ultimoEstado)) {
+
+                                    if ("COMPLETED".equalsIgnoreCase(ultimoEstado)
+                                            || "EXITOSA".equalsIgnoreCase(ultimoEstado)) {
                                         confirmado = true;
                                         log.info("✅ Polling: Transacción CONFIRMADA en intento #{}", i + 1);
                                         break;
                                     }
-                                    
-                                    if ("FAILED".equalsIgnoreCase(ultimoEstado) || "FALLIDA".equalsIgnoreCase(ultimoEstado) || "RECHAZADA".equalsIgnoreCase(ultimoEstado)) {
-                                        log.warn("❌ Polling: Switch reportó FALLO en intento #{}. Motivo: {}", i + 1, statusResp.getError());
-                                        motivoFallo = (statusResp.getError() != null) ? statusResp.getError().getMessage() : "Rechazo desconocido";
-                                        
+
+                                    if ("FAILED".equalsIgnoreCase(ultimoEstado)
+                                            || "FALLIDA".equalsIgnoreCase(ultimoEstado)
+                                            || "RECHAZADA".equalsIgnoreCase(ultimoEstado)) {
+                                        log.warn("❌ Polling: Switch reportó FALLO en intento #{}. Motivo: {}", i + 1,
+                                                statusResp.getError());
+                                        motivoFallo = (statusResp.getError() != null)
+                                                ? statusResp.getError().getMessage()
+                                                : "Rechazo desconocido";
+
                                         // REVERSO LOCAL INMEDIATO
                                         BigDecimal saldoRevertido = procesarSaldo(trx.getIdCuentaOrigen(), montoTotal);
                                         trx.setEstado("FALLIDA");
                                         trx.setSaldoResultante(saldoRevertido);
                                         trx.setDescripcion("RECHAZADA POR DESTINO: " + motivoFallo);
                                         Transaccion fallida = transaccionRepository.save(trx);
-                                        
+
                                         throw new BusinessException("Transacción Rechazada: " + motivoFallo);
                                     }
                                 }
@@ -279,13 +291,16 @@ public class TransaccionServiceImpl implements TransaccionService {
                             trx.setEstado("COMPLETADA"); // Confirmado
                         } else {
                             // TIMEOUT o no confirmado aún
-                            log.warn("⚠️ Polling finalizado sin confirmación (TIMEOUT). Estado último: {}", ultimoEstado);
-                            // No revertimos, dejamos en PENDIENTE/EN_PROCESO. El usuario recibirá aviso de "En proceso".
+                            log.warn("⚠️ Polling finalizado sin confirmación (TIMEOUT). Estado último: {}",
+                                    ultimoEstado);
+                            // No revertimos, dejamos en PENDIENTE/EN_PROCESO. El usuario recibirá aviso de
+                            // "En proceso".
                             saldoImpactado = saldoDebitado; // El dinero sigue debitado temporalmente
                             trx.setEstado("PENDIENTE");
                             trx.setDescripcion("En proceso de validación. Le notificaremos.");
-                            trx.setSaldoResultante(saldoDebitado); // FIX: Guardar el saldo impactado para que no quede en 0
-                            
+                            trx.setSaldoResultante(saldoDebitado); // FIX: Guardar el saldo impactado para que no quede
+                                                                   // en 0
+
                             // Guardamos estado pendiente
                             Transaccion pendiente = transaccionRepository.save(trx);
                             TransaccionResponseDTO respDto = mapearADTO(pendiente, null);
@@ -298,48 +313,54 @@ public class TransaccionServiceImpl implements TransaccionService {
                                 e.getMessage());
 
                         // INTENTO DE REVERSO AUTOMÁTICO AL SWITCH (SAFETY CATCH)
-                        // Si fue un Timeout, el Switch podría haberla procesado. Enviamos reverso para cancelar.
+                        // Si fue un Timeout, el Switch podría haberla procesado. Enviamos reverso para
+                        // cancelar.
                         try {
-                             log.warn("⚠️ Intentando notificar reverso automático al Switch (Safety Check)...");
-                             String revMessageId = "MSG-REV-AUTO-" + System.currentTimeMillis();
-                             String revCreationTime = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
-                                     .format(java.time.format.DateTimeFormatter.ISO_INSTANT);
-                             
-                             SwitchRefundRequest refundReq = SwitchRefundRequest.builder()
-                                 .header(SwitchRefundRequest.Header.builder()
-                                         .messageId(revMessageId)
-                                         .creationDateTime(revCreationTime)
-                                         .originatingBankId(codigoBanco)
-                                         .build())
-                                 .body(SwitchRefundRequest.Body.builder()
-                                         .returnInstructionId(UUID.randomUUID().toString())
-                                         .originalInstructionId(trx.getReferencia())
-                                         .returnReason("MS03") // Technical Error
-                                         .returnAmount(SwitchRefundRequest.Amount.builder()
-                                                 .currency("USD")
-                                                 .value(trx.getMonto())
-                                                 .build())
-                                         .build())
-                                 .build();
-                             
-                             try {
-                                 SwitchTransferResponse revResp = switchClient.solicitarDevolucion(refundReq);
-                                 if (revResp != null && revResp.isSuccess()) {
-                                     log.info("✅ Reverso automático aceptado por Switch.");
-                                 } else {
-                                     log.warn("⚠️ Switch rechazó reverso automático: {}", revResp);
-                                 }
-                             } catch (Exception exRev) {
-                                 String err = exRev.getMessage();
-                                 if (err != null && err.contains("409") && err.contains("Transacción original no encontrada")) {
-                                     log.info("✅ Switch confirmó 409 (Tx no encontrada), por lo tanto está reversada efectivamente.");
-                                 } else {
-                                     throw exRev; // Propagar para loguear en el catch externo
-                                 }
-                             }
+                            log.warn("⚠️ Intentando notificar reverso automático al Switch (Safety Check)...");
+                            String revMessageId = "MSG-REV-AUTO-" + System.currentTimeMillis();
+                            String revCreationTime = java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
+                                    .format(java.time.format.DateTimeFormatter.ISO_INSTANT);
+
+                            SwitchRefundRequest refundReq = SwitchRefundRequest.builder()
+                                    .header(SwitchRefundRequest.Header.builder()
+                                            .messageId(revMessageId)
+                                            .creationDateTime(revCreationTime)
+                                            .originatingBankId(codigoBanco)
+                                            .build())
+                                    .body(SwitchRefundRequest.Body.builder()
+                                            .returnInstructionId(UUID.randomUUID().toString())
+                                            .originalInstructionId(trx.getReferencia())
+                                            .returnReason("MS03") // Technical Error
+                                            .returnAmount(SwitchRefundRequest.Amount.builder()
+                                                    .currency("USD")
+                                                    .value(trx.getMonto())
+                                                    .build())
+                                            .build())
+                                    .build();
+
+                            try {
+                                SwitchTransferResponse revResp = switchClient.solicitarDevolucion(refundReq);
+                                if (revResp != null && revResp.isSuccess()) {
+                                    log.info("✅ Reverso automático aceptado por Switch.");
+                                } else {
+                                    log.warn("⚠️ Switch rechazó reverso automático: {}", revResp);
+                                }
+                            } catch (Exception exRev) {
+                                String err = exRev.getMessage();
+                                if (err != null && err.contains("409")
+                                        && err.contains("Transacción original no encontrada")) {
+                                    log.info(
+                                            "✅ Switch confirmó 409 (Tx no encontrada), por lo tanto está reversada efectivamente.");
+                                } else {
+                                    throw exRev; // Propagar para loguear en el catch externo
+                                }
+                            }
                         } catch (Exception ex) {
-                            // Ignoramos errores aquí porque lo importante es el reverso local que sigue a continuación
-                            log.warn("⚠️ Falló el intento de reverso automático en Switch (Esperable si Switch está caído): {}", ex.getMessage());
+                            // Ignoramos errores aquí porque lo importante es el reverso local que sigue a
+                            // continuación
+                            log.warn(
+                                    "⚠️ Falló el intento de reverso automático en Switch (Esperable si Switch está caído): {}",
+                                    ex.getMessage());
                         }
 
                         BigDecimal saldoRevertido = procesarSaldo(trx.getIdCuentaOrigen(), montoTotal);
@@ -349,16 +370,19 @@ public class TransaccionServiceImpl implements TransaccionService {
                         trx.setEstado("FALLIDA");
                         trx.setSaldoResultante(saldoRevertido);
                         String errorMsg = e.getMessage() != null ? e.getMessage() : "Error desconocido";
-                        
+
                         // Limpieza de mensaje de excepción
                         String friendlyEx = "Error de comunicación";
                         String lowerEx = errorMsg.toLowerCase();
 
-                        if (lowerEx.contains("ac01")) friendlyEx = "Cuenta destino inválida";
-                        else if (lowerEx.contains("504") || lowerEx.contains("time out") || lowerEx.contains("timed out")) friendlyEx = "El banco destino no responde";
+                        if (lowerEx.contains("ac01"))
+                            friendlyEx = "Cuenta destino inválida";
+                        else if (lowerEx.contains("504") || lowerEx.contains("time out")
+                                || lowerEx.contains("timed out"))
+                            friendlyEx = "El banco destino no responde";
                         else {
                             // CATCH-ALL para cualquier otro error de conexión/técnico
-                             friendlyEx = "Error de comunicación con la entidad financiera";
+                            friendlyEx = "Error de comunicación con la entidad financiera";
                         }
 
                         trx.setDescripcion("RECHAZADA: " + friendlyEx);
@@ -715,20 +739,22 @@ public class TransaccionServiceImpl implements TransaccionService {
             log.info("📤 Enviando solicitud de reverso al Switch (pacs.004)...");
             String motivoIso = mapearCodigoErrorInternalToISO(requestDTO.getMotivo());
             switchRequest.getBody().setReturnReason(motivoIso);
-            
+
             response = switchClient.solicitarDevolucion(switchRequest);
-            
+
         } catch (Exception e) {
             String errorMsg = e.getMessage();
-            if (errorMsg != null && errorMsg.contains("409") && errorMsg.contains("Transacción original no encontrada")) {
-                log.warn("⚠️ Switch reportó transacción no encontrada (409) durante el reverso. Asumiendo que la transacción nunca existió o falló previamente. Procediendo con el reverso local.");
+            if (errorMsg != null && errorMsg.contains("409")
+                    && errorMsg.contains("Transacción original no encontrada")) {
+                log.warn(
+                        "⚠️ Switch reportó transacción no encontrada (409) durante el reverso. Asumiendo que la transacción nunca existió o falló previamente. Procediendo con el reverso local.");
                 response = SwitchTransferResponse.builder()
                         .success(true)
                         .build();
             } else {
-               log.error("Error técnico al solicitar reverso: ", e);
+                log.error("Error técnico al solicitar reverso: ", e);
                 // Si es un error desconocido, lanzamos excepción
-               throw new BusinessException("Error de comunicación con el Switch: " + errorMsg);
+                throw new BusinessException("Error de comunicación con el Switch: " + errorMsg);
             }
         }
 
@@ -772,9 +798,10 @@ public class TransaccionServiceImpl implements TransaccionService {
             }
 
         } catch (Exception e) {
-             if (e instanceof BusinessException) throw e;
-             log.error("Error al procesar el reverso local: ", e);
-             throw new BusinessException("Error interno al procesar reverso: " + e.getMessage());
+            if (e instanceof BusinessException)
+                throw e;
+            log.error("Error al procesar el reverso local: ", e);
+            throw new BusinessException("Error interno al procesar reverso: " + e.getMessage());
         }
     }
 
@@ -802,10 +829,12 @@ public class TransaccionServiceImpl implements TransaccionService {
     }
 
     @Override
-    public com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaExterna(String targetBankId, String targetAccountNumber) {
+    public com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaExterna(String targetBankId,
+            String targetAccountNumber) {
         log.info("🔍 Validando cuenta externa: Bank={}, Account={}", targetBankId, targetAccountNumber);
 
-        com.arcbank.cbs.transaccion.dto.AccountLookupRequest request = com.arcbank.cbs.transaccion.dto.AccountLookupRequest.builder()
+        com.arcbank.cbs.transaccion.dto.AccountLookupRequest request = com.arcbank.cbs.transaccion.dto.AccountLookupRequest
+                .builder()
                 .header(com.arcbank.cbs.transaccion.dto.AccountLookupRequest.Header.builder()
                         .originatingBankId(codigoBanco)
                         .build())
@@ -819,7 +848,8 @@ public class TransaccionServiceImpl implements TransaccionService {
             return switchClient.lookupAccount(request);
         } catch (Exception e) {
             log.error("❌ Error validando cuenta externa: {}", e.getMessage());
-            // Return failed response instead of throwing, so frontend can handle it gracefully if needed
+            // Return failed response instead of throwing, so frontend can handle it
+            // gracefully if needed
             // Or rethrow as BusinessException if we want to block.
             // Let's return a FAILED response structure to match the expected behavior.
             com.arcbank.cbs.transaccion.dto.AccountLookupResponse.Data data = new com.arcbank.cbs.transaccion.dto.AccountLookupResponse.Data();
@@ -832,35 +862,38 @@ public class TransaccionServiceImpl implements TransaccionService {
     @Override
     public com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaLocal(String numeroCuenta) {
         log.info("🔍 Validación Local Solicitada para cuenta: {}", numeroCuenta);
-        
+
         com.arcbank.cbs.transaccion.dto.AccountLookupResponse.Data data = new com.arcbank.cbs.transaccion.dto.AccountLookupResponse.Data();
 
         try {
             Map<String, Object> cuenta = cuentaCliente.buscarPorNumero(numeroCuenta);
-            
+
             if (cuenta != null && cuenta.get("idCuenta") != null) {
                 // Cuenta existe
                 data.setExists(true);
                 data.setStatus("ACTIVE"); // Default active if found
                 data.setCurrency("USD");
-                
+
                 // Get Owner Name
                 try {
                     Integer idCliente = Integer.valueOf(cuenta.get("idCliente").toString());
                     Map<String, Object> cliente = clienteClient.obtenerCliente(idCliente);
-                    
+
                     if (cliente != null) {
-                         // Assuming cliente map has "nombres" and "apellidos" or just "nombre"
-                         // Based on typical DTOs seen in other files, let's try to construct a full name.
-                         String nombre = "";
-                         if (cliente.get("nombres") != null) nombre += cliente.get("nombres");
-                         if (cliente.get("apellidos") != null) nombre += " " + cliente.get("apellidos");
-                         
-                         if (nombre.trim().isEmpty() && cliente.get("nombre") != null) {
-                             nombre = cliente.get("nombre").toString();
-                         }
-                         
-                         data.setOwnerName(nombre.trim());
+                        // Assuming cliente map has "nombres" and "apellidos" or just "nombre"
+                        // Based on typical DTOs seen in other files, let's try to construct a full
+                        // name.
+                        String nombre = "";
+                        if (cliente.get("nombres") != null)
+                            nombre += cliente.get("nombres");
+                        if (cliente.get("apellidos") != null)
+                            nombre += " " + cliente.get("apellidos");
+
+                        if (nombre.trim().isEmpty() && cliente.get("nombre") != null) {
+                            nombre = cliente.get("nombre").toString();
+                        }
+
+                        data.setOwnerName(nombre.trim());
                     } else {
                         data.setOwnerName("Cliente BANTEC");
                     }
@@ -868,15 +901,15 @@ public class TransaccionServiceImpl implements TransaccionService {
                     log.warn("No se pudo obtener nombre del cliente para cuenta {}: {}", numeroCuenta, ex.getMessage());
                     data.setOwnerName("Cliente BANTEC");
                 }
-                
+
                 return new com.arcbank.cbs.transaccion.dto.AccountLookupResponse("SUCCESS", data);
-                
+
             } else {
                 data.setExists(false);
                 data.setMensaje("Cuenta no encontrada");
                 return new com.arcbank.cbs.transaccion.dto.AccountLookupResponse("FAILED", data);
             }
-            
+
         } catch (Exception e) {
             log.error("Error validando cuenta local: {}", e.getMessage());
             data.setExists(false);
@@ -885,22 +918,19 @@ public class TransaccionServiceImpl implements TransaccionService {
         }
     }
 
-                return "MS03";
-        }
-    }
-
     @Override
     @Transactional
     public String consultarEstadoTransferencia(String instructionId) {
         Transaccion tx = transaccionRepository.findByReferencia(instructionId).orElse(null);
-        
+
         if (tx == null) {
             return "NOT_FOUND";
         }
 
         if ("PENDIENTE".equals(tx.getEstado())) {
             // 1. Check for Expiry (Safety Valve)
-            long minutesDiff = java.time.temporal.ChronoUnit.MINUTES.between(tx.getFechaCreacion(), java.time.LocalDateTime.now());
+            long minutesDiff = java.time.temporal.ChronoUnit.MINUTES.between(tx.getFechaCreacion(),
+                    java.time.LocalDateTime.now());
             if (minutesDiff >= 3) {
                 log.warn("⚠️ Transacción PENDIENTE expirada ({} min). Forzando fallo.", minutesDiff);
                 tx.setEstado("FALLIDA");
@@ -919,38 +949,46 @@ public class TransaccionServiceImpl implements TransaccionService {
                     if ("COMPLETED".equalsIgnoreCase(estadoSwitch) || "EXITOSA".equalsIgnoreCase(estadoSwitch)) {
                         log.info("✅ Transacción confirmada tras validación tardía.");
                         tx.setEstado("COMPLETADA");
-                        tx.setDescripcion(tx.getDescripcion().replace("En proceso de validación. Le notificaremos.", "Transferencia Finalizada"));
+                        tx.setDescripcion(tx.getDescripcion().replace("En proceso de validación. Le notificaremos.",
+                                "Transferencia Finalizada"));
                         transaccionRepository.save(tx);
                         return "COMPLETED";
-                    } 
-                    
-                    if ("FAILED".equalsIgnoreCase(estadoSwitch) || "FALLIDA".equalsIgnoreCase(estadoSwitch) || "RECHAZADA".equalsIgnoreCase(estadoSwitch)) {
-                         log.warn("❌ Transacción fallida detectada tras validación tardía.");
-                         tx.setEstado("FALLIDA");
-                         String motivo = (resp.getError() != null) ? resp.getError().getMessage() : "Fallo confirmado por Switch";
-                         tx.setDescripcion("RECHAZADA: " + motivo);
-                         transaccionRepository.save(tx);
-                         return "FAILED";
+                    }
+
+                    if ("FAILED".equalsIgnoreCase(estadoSwitch) || "FALLIDA".equalsIgnoreCase(estadoSwitch)
+                            || "RECHAZADA".equalsIgnoreCase(estadoSwitch)) {
+                        log.warn("❌ Transacción fallida detectada tras validación tardía.");
+                        tx.setEstado("FALLIDA");
+                        String motivo = (resp.getError() != null) ? resp.getError().getMessage()
+                                : "Fallo confirmado por Switch";
+                        tx.setDescripcion("RECHAZADA: " + motivo);
+                        transaccionRepository.save(tx);
+                        return "FAILED";
                     }
                 }
             } catch (Exception e) {
                 String errorMsg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
                 log.warn("⚠️ Error en Lazy Update: {}", errorMsg);
-                
-                // Treat definite connection/server errors as failures to release the transaction
-                if (errorMsg.contains("404") || errorMsg.contains("not found") || 
-                    errorMsg.contains("500") || errorMsg.contains("502") || errorMsg.contains("503") || errorMsg.contains("504") ||
-                    errorMsg.contains("refused") || errorMsg.contains("time out") || errorMsg.contains("timed out")) {
-                    
-                     log.warn("⚠️ Error crítico de comunicación/Switch ({}). Marcando como FALLIDA.", errorMsg);
-                     tx.setEstado("FALLIDA");
-                     // Truncar error si es necesario
-                     if (errorMsg.length() > 200) errorMsg = errorMsg.substring(0, 200) + "...";
-                     tx.setDescripcion("RECHAZADA: Problema de conexión (" + errorMsg + ")");
-                     transaccionRepository.save(tx);
-                     return "FAILED";
+
+                // Treat definite connection/server errors as failures to release the
+                // transaction
+                if (errorMsg.contains("404") || errorMsg.contains("not found") ||
+                        errorMsg.contains("500") || errorMsg.contains("502") || errorMsg.contains("503")
+                        || errorMsg.contains("504") ||
+                        errorMsg.contains("refused") || errorMsg.contains("time out")
+                        || errorMsg.contains("timed out")) {
+
+                    log.warn("⚠️ Error crítico de comunicación/Switch ({}). Marcando como FALLIDA.", errorMsg);
+                    tx.setEstado("FALLIDA");
+                    // Truncar error si es necesario
+                    if (errorMsg.length() > 200)
+                        errorMsg = errorMsg.substring(0, 200) + "...";
+                    tx.setDescripcion("RECHAZADA: Problema de conexión (" + errorMsg + ")");
+                    transaccionRepository.save(tx);
+                    return "FAILED";
                 }
-                // Si es un error desconocido pero no crítico, seguimos en PENDING hasta que expire
+                // Si es un error desconocido pero no crítico, seguimos en PENDING hasta que
+                // expire
             }
             return "PENDING";
         }
@@ -961,7 +999,7 @@ public class TransaccionServiceImpl implements TransaccionService {
         } else if ("FALLIDA".equals(estado) || "REVERSADA".equals(estado)) {
             return "FAILED";
         }
-        
+
         return "PENDING";
     }
 }
