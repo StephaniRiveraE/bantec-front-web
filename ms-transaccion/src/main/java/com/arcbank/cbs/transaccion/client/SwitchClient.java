@@ -30,8 +30,13 @@ public interface SwitchClient {
     SwitchTransferResponse solicitarDevolucion(@RequestBody SwitchRefundRequest request);
 
     @GetMapping("/api/v2/switch/transfers/{instructionId}")
-    SwitchTransferResponse consultarEstadoTransferencia(@org.springframework.web.bind.annotation.PathVariable("instructionId") String instructionId);
+    SwitchTransferResponse consultarEstadoTransferencia(
+            @org.springframework.web.bind.annotation.PathVariable("instructionId") String instructionId);
 
     @GetMapping("/api/v1/reference/iso20022/errors")
     List<Map<String, String>> obtenerMotivosDevolucion();
+
+    @PostMapping("/api/v2/switch/accounts/lookup")
+    com.arcbank.cbs.transaccion.dto.AccountLookupResponse lookupAccount(
+            @RequestBody com.arcbank.cbs.transaccion.dto.AccountLookupRequest request);
 }

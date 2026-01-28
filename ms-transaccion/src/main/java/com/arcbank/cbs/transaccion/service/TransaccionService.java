@@ -28,4 +28,9 @@ public interface TransaccionService {
     List<Map<String, String>> obtenerMotivosDevolucion();
 
     String consultarEstadoTransferencia(String instructionId);
+
+    com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaExterna(String targetBankId,
+            String targetAccountNumber);
+
+    com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaLocal(String numeroCuenta);
 }

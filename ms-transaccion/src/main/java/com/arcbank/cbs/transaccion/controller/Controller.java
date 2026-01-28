@@ -46,4 +46,15 @@ public class Controller {
     public ResponseEntity<List<java.util.Map<String, String>>> obtenerMotivosDevolucion() {
         return ResponseEntity.ok(transaccionService.obtenerMotivosDevolucion());
     }
+
+    @PostMapping("/validar-externa")
+    @Operation(summary = "Validar cuenta externa en otro banco")
+    public ResponseEntity<com.arcbank.cbs.transaccion.dto.AccountLookupResponse> validarCuentaExterna(
+            @RequestBody java.util.Map<String, String> request) {
+
+        String targetBankId = request.get("targetBankId");
+        String targetAccountNumber = request.get("targetAccountNumber");
+
+        return ResponseEntity.ok(transaccionService.validarCuentaExterna(targetBankId, targetAccountNumber));
+    }
 }

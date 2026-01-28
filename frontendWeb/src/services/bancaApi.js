@@ -135,6 +135,13 @@ export async function getTransferStatus(instructionId) {
   return await request(`/api/v2/switch/transfers/${instructionId}`);
 }
 
+export async function validarCuentaExterna(targetBankId, targetAccountNumber) {
+  return await request('/api/transacciones/validar-externa', {
+    method: 'POST',
+    body: JSON.stringify({ targetBankId, targetAccountNumber })
+  });
+}
+
 const bancaApi = {
   getClientePorIdentificacion,
   getCuentaPorNumero,
@@ -144,7 +151,8 @@ const bancaApi = {
   realizarTransferenciaInterbancaria,
   solicitarReverso,
   getBancos,
-  getTransferStatus
+  getTransferStatus,
+  validarCuentaExterna
 }
 
 export default bancaApi;

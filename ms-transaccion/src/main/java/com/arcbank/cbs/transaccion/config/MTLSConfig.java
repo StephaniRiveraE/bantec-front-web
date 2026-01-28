@@ -41,11 +41,29 @@ public class MTLSConfig {
     @Value("${app.switch.apikey:}")
     private String apiKey;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.arcbank.cbs.transaccion.service.JwsService jwsService;
+
     @Bean
     public RequestInterceptor requestInterceptor() {
         return requestTemplate -> {
+            // 1. Add API Key
             if (apiKey != null && !apiKey.isBlank()) {
                 requestTemplate.header("apikey", apiKey);
+            }
+
+            // 2. Add JWS Signature (Detached / Header based)
+            // If body exists, sign it. If GET, maybe sign empty string or URL?
+            // Standard practice: Sign the body if present.
+            if (requestTemplate.body() != null) {
+                String body = new String(requestTemplate.body(), java.nio.charset.StandardCharsets.UTF_8);
+                try {
+                    String signature = jwsService.sign(body);
+                    requestTemplate.header("x-jws-signature", signature);
+                    log.debug("📝 Signed request body. Sig: {}", signature.substring(0, 10) + "...");
+                } catch (Exception e) {
+                    log.error("❌ Failed to sign request: {}", e.getMessage());
+                }
             }
         };
     }

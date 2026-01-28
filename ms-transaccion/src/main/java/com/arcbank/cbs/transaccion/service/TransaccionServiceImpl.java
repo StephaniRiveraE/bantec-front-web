@@ -797,6 +797,93 @@ public class TransaccionServiceImpl implements TransaccionService {
             case "DUPLICADO":
                 return "MD01";
             default:
+                return "MS03";
+        }
+    }
+
+    @Override
+    public com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaExterna(String targetBankId, String targetAccountNumber) {
+        log.info("🔍 Validando cuenta externa: Bank={}, Account={}", targetBankId, targetAccountNumber);
+
+        com.arcbank.cbs.transaccion.dto.AccountLookupRequest request = com.arcbank.cbs.transaccion.dto.AccountLookupRequest.builder()
+                .header(com.arcbank.cbs.transaccion.dto.AccountLookupRequest.Header.builder()
+                        .originatingBankId(codigoBanco)
+                        .build())
+                .body(com.arcbank.cbs.transaccion.dto.AccountLookupRequest.Body.builder()
+                        .targetBankId(targetBankId)
+                        .targetAccountNumber(targetAccountNumber)
+                        .build())
+                .build();
+
+        try {
+            return switchClient.lookupAccount(request);
+        } catch (Exception e) {
+            log.error("❌ Error validando cuenta externa: {}", e.getMessage());
+            // Return failed response instead of throwing, so frontend can handle it gracefully if needed
+            // Or rethrow as BusinessException if we want to block.
+            // Let's return a FAILED response structure to match the expected behavior.
+            com.arcbank.cbs.transaccion.dto.AccountLookupResponse.Data data = new com.arcbank.cbs.transaccion.dto.AccountLookupResponse.Data();
+            data.setExists(false);
+            data.setMensaje("Error de comunicación: " + e.getMessage());
+            return new com.arcbank.cbs.transaccion.dto.AccountLookupResponse("FAILED", data);
+        }
+    }
+
+    @Override
+    public com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaLocal(String numeroCuenta) {
+        log.info("🔍 Validación Local Solicitada para cuenta: {}", numeroCuenta);
+        
+        com.arcbank.cbs.transaccion.dto.AccountLookupResponse.Data data = new com.arcbank.cbs.transaccion.dto.AccountLookupResponse.Data();
+
+        try {
+            Map<String, Object> cuenta = cuentaCliente.buscarPorNumero(numeroCuenta);
+            
+            if (cuenta != null && cuenta.get("idCuenta") != null) {
+                // Cuenta existe
+                data.setExists(true);
+                data.setStatus("ACTIVE"); // Default active if found
+                data.setCurrency("USD");
+                
+                // Get Owner Name
+                try {
+                    Integer idCliente = Integer.valueOf(cuenta.get("idCliente").toString());
+                    Map<String, Object> cliente = clienteClient.obtenerCliente(idCliente);
+                    
+                    if (cliente != null) {
+                         // Assuming cliente map has "nombres" and "apellidos" or just "nombre"
+                         // Based on typical DTOs seen in other files, let's try to construct a full name.
+                         String nombre = "";
+                         if (cliente.get("nombres") != null) nombre += cliente.get("nombres");
+                         if (cliente.get("apellidos") != null) nombre += " " + cliente.get("apellidos");
+                         
+                         if (nombre.trim().isEmpty() && cliente.get("nombre") != null) {
+                             nombre = cliente.get("nombre").toString();
+                         }
+                         
+                         data.setOwnerName(nombre.trim());
+                    } else {
+                        data.setOwnerName("Cliente BANTEC");
+                    }
+                } catch (Exception ex) {
+                    log.warn("No se pudo obtener nombre del cliente para cuenta {}: {}", numeroCuenta, ex.getMessage());
+                    data.setOwnerName("Cliente BANTEC");
+                }
+                
+                return new com.arcbank.cbs.transaccion.dto.AccountLookupResponse("SUCCESS", data);
+                
+            } else {
+                data.setExists(false);
+                data.setMensaje("Cuenta no encontrada");
+                return new com.arcbank.cbs.transaccion.dto.AccountLookupResponse("FAILED", data);
+            }
+            
+        } catch (Exception e) {
+            log.error("Error validando cuenta local: {}", e.getMessage());
+            data.setExists(false);
+            data.setMensaje("Error interno en validación local");
+            return new com.arcbank.cbs.transaccion.dto.AccountLookupResponse("FAILED", data);
+        }
+    }
 
                 return "MS03";
         }
