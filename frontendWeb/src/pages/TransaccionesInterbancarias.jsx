@@ -347,12 +347,12 @@ export default function TransaccionesInterbancarias() {
                                         style={{
                                             width: 'auto',
                                             padding: '0 20px',
-                                            background: (loading || !toAccount || !bankBic) ? 'rgba(255,255,255,0.1)' : 'var(--accent-primary)',
-                                            color: (loading || !toAccount || !bankBic) ? 'rgba(255,255,255,0.3)' : '#000',
+                                            background: (loading || !toAccount || !bankBic) ? '#333' : 'var(--accent-primary)',
+                                            color: (loading || !toAccount || !bankBic) ? '#888' : '#000',
                                             cursor: (loading || !toAccount || !bankBic) ? 'not-allowed' : 'pointer',
                                             fontWeight: 'bold',
                                             fontSize: '0.9rem',
-                                            border: 'none',
+                                            border: (loading || !toAccount || !bankBic) ? '1px solid #444' : 'none',
                                             transition: 'all 0.3s'
                                         }}
                                         onClick={handleValidateAccount}
