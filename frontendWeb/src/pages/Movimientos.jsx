@@ -101,7 +101,7 @@ export default function Movimientos() {
       return alert("⚠️ No se encontró una referencia válida (UUID) de transacción.\n\nEs posible que la transacción interna no haya generado un ID de rastreo externo.");
     }
 
-    const confirmMsg = confirm(`Consultando al Switch por:\n${refToUse}\n\n¿Desea verificar el estado final?`);
+    const confirmMsg = window.confirm(`Consultando al Switch por:\n${refToUse}\n\n¿Desea verificar el estado final?`);
     if (!confirmMsg) return;
 
     setLoading(true);
