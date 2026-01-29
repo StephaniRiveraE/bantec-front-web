@@ -838,10 +838,26 @@ public class TransaccionServiceImpl implements TransaccionService {
         }
     }
 
+    // Lista de códigos de banco que se consideran locales (mismo sistema)
+    private static final java.util.Set<String> BANCOS_LOCALES = java.util.Set.of(
+            "BANTEC", "ARCBANK" // ARCBANK es un alias del sistema local usado en el Switch de demo
+    );
+
     @Override
     public com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaExterna(String targetBankId,
             String targetAccountNumber) {
         log.info("🔍 Validando cuenta externa: Bank={}, Account={}", targetBankId, targetAccountNumber);
+
+        // Si el banco destino es nuestro propio banco o un alias local, validar
+        // localmente
+        // Esto evita pasar por el Switch y obtiene el nombre real del cliente
+        boolean esBancoLocal = (codigoBanco != null && codigoBanco.equalsIgnoreCase(targetBankId))
+                || (targetBankId != null && BANCOS_LOCALES.contains(targetBankId.toUpperCase()));
+
+        if (esBancoLocal) {
+            log.info("🏦 Banco destino es local ({}), validando localmente...", targetBankId);
+            return validarCuentaLocal(targetAccountNumber);
+        }
 
         com.arcbank.cbs.transaccion.dto.AccountLookupRequest request = com.arcbank.cbs.transaccion.dto.AccountLookupRequest
                 .builder()
