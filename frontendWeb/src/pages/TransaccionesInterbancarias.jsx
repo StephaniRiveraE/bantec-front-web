@@ -73,25 +73,36 @@ export default function TransaccionesInterbancarias() {
 
         setError("");
         setValidationMsg("");
+        setToName(""); // Limpiar nombre previo
         setLoading(true);
 
         try {
             const resp = await validarCuentaExterna(bankBic, toAccount);
+            console.log("🔍 Respuesta de validación recibida:", resp);
 
-            if (resp && resp.status === "SUCCESS" && resp.data.exists) {
-                setToName(resp.data.ownerName);
-                setValidationMsg(`✅ Cuenta validada: ${resp.data.ownerName}`);
-            } else {
+            // La respuesta ahora siempre viene normalizada
+            if (resp && resp.status === "SUCCESS" && resp.data?.exists) {
+                const ownerName = resp.data.ownerName || "Cuenta Verificada";
+                setToName(ownerName);
+                setValidationMsg(`✅ Cuenta validada: ${ownerName}`);
+            } else if (resp && resp.status === "FAILED") {
+                // Error de validación (cuenta no existe, banco no responde, etc.)
+                const errorMsg = resp.data?.mensaje || "La cuenta no existe o no está disponible.";
                 setValidationMsg("");
-                throw new Error(resp?.data?.mensaje || "No se pudo validar la cuenta en el banco destino.");
+                setError(`❌ ${errorMsg}`);
+            } else {
+                // Respuesta inesperada
+                setValidationMsg("");
+                setError("No se pudo verificar la cuenta. Intente nuevamente.");
             }
         } catch (e) {
-            console.error(e);
-            setError(e.message || "Error en validación de cuenta.");
+            console.error("Error en validación:", e);
+            setError(e.message || "Error de conexión al validar la cuenta.");
         } finally {
             setLoading(false);
         }
     };
+
 
     const goToStep2 = () => {
         if (!toAccount || !bankBic || !toName) return setError("Todos los campos son obligatorios. Valide la cuenta si es posible.");

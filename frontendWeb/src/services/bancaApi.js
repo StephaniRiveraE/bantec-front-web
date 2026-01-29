@@ -136,10 +136,120 @@ export async function getTransferStatus(instructionId) {
 }
 
 export async function validarCuentaExterna(targetBankId, targetAccountNumber) {
-  return await request('/api/transacciones/validar-externa', {
-    method: 'POST',
-    body: JSON.stringify({ targetBankId, targetAccountNumber })
-  });
+  console.log("🔍 Iniciando validación de cuenta externa:", { targetBankId, targetAccountNumber });
+
+  // Estructura ISO para Account Lookup (acmt.023)
+  const lookupPayload = {
+    header: {
+      originatingBankId: "BANTEC" // Nuestro código BIC
+    },
+    body: {
+      targetBankId: targetBankId,
+      targetAccountNumber: targetAccountNumber
+    }
+  };
+
+  // Helper para normalizar la respuesta a un formato consistente
+  const normalizeResponse = (resp) => {
+    console.log("📦 Respuesta recibida:", resp);
+
+    // Caso 1: Respuesta ya está en formato esperado { status: "SUCCESS", data: { exists, ownerName } }
+    if (resp?.status === "SUCCESS" && resp?.data?.exists !== undefined) {
+      return resp;
+    }
+
+    // Caso 2: Respuesta viene directamente del Switch con estructura ISO
+    // Puede venir como { verificationResult: { matched: true, ... }, ... }
+    if (resp?.verificationResult !== undefined) {
+      const matched = resp.verificationResult?.matched || resp.verificationResult === true;
+      return {
+        status: matched ? "SUCCESS" : "FAILED",
+        data: {
+          exists: matched,
+          ownerName: resp.creditorName || resp.accountHolderName || resp.ownerName || "Cuenta Verificada",
+          currency: resp.currency || "USD",
+          status: resp.accountStatus || "ACTIVE"
+        }
+      };
+    }
+
+    // Caso 3: Respuesta plana del Switch { exists, ownerName, ... }
+    if (resp?.exists !== undefined) {
+      return {
+        status: resp.exists ? "SUCCESS" : "FAILED",
+        data: {
+          exists: resp.exists,
+          ownerName: resp.ownerName || resp.creditorName || resp.accountHolderName || "Cuenta Verificada",
+          currency: resp.currency || "USD",
+          status: resp.status || "ACTIVE"
+        }
+      };
+    }
+
+    // Caso 4: Respuesta con status a nivel raíz (formato simplificado)
+    if (resp?.ownerName || resp?.creditorName) {
+      return {
+        status: "SUCCESS",
+        data: {
+          exists: true,
+          ownerName: resp.ownerName || resp.creditorName,
+          currency: resp.currency || "USD",
+          status: resp.accountStatus || "ACTIVE"
+        }
+      };
+    }
+
+    // Caso 5: Error o respuesta inesperada
+    console.warn("⚠️ Formato de respuesta no reconocido:", resp);
+    return {
+      status: "FAILED",
+      data: {
+        exists: false,
+        ownerName: null,
+        mensaje: resp?.mensaje || resp?.message || "Formato de respuesta no reconocido"
+      }
+    };
+  };
+
+  try {
+    // Intento 1: Llamar al backend propio de Bantec (tiene el endpoint implementado)
+    console.log("📡 Intentando backend Bantec: /api/transacciones/validar-externa");
+    const backendResp = await request('/api/transacciones/validar-externa', {
+      method: 'POST',
+      body: JSON.stringify({ targetBankId, targetAccountNumber })
+    });
+    console.log("✅ Respuesta del backend Bantec:", backendResp);
+    return normalizeResponse(backendResp);
+  } catch (backendErr) {
+    console.warn("⚠️ Backend Bantec no disponible para validación:", backendErr.message);
+
+    // Verificar si es un error de conexión vs error de validación real
+    const isConnectionError = backendErr.message?.includes("fetch") ||
+      backendErr.message?.includes("network") ||
+      backendErr.response?.status === 404 ||
+      backendErr.response?.status >= 500;
+
+    if (!isConnectionError && backendErr.response?.data) {
+      // El backend respondió pero la cuenta no existe o hay otro error de negocio
+      console.log("❌ Error de validación del backend:", backendErr.response.data);
+      return normalizeResponse(backendErr.response.data);
+    }
+
+    // Intento 2: Llamar directamente al Switch (fallback solo si hay error de conexión)
+    console.log("📡 Intentando Switch directo: /api/v2/switch/accounts/lookup");
+    try {
+      const switchResp = await request('/api/v2/switch/accounts/lookup', {
+        method: 'POST',
+        body: JSON.stringify(lookupPayload)
+      });
+      console.log("✅ Respuesta del Switch:", switchResp);
+      return normalizeResponse(switchResp);
+    } catch (switchErr) {
+      // Si ambos fallan, lanzar error amigable
+      console.error("❌ Error en Switch lookup:", switchErr);
+      throw new Error(switchErr.message || "No se pudo validar la cuenta. Verifique la conexión.");
+    }
+  }
 }
 
 const bancaApi = {
