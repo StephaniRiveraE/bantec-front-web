@@ -114,4 +114,19 @@ export const transacciones = {
       method: "POST",
       body: JSON.stringify({ ...body, tipoOperacion: "DEPOSITO" }),
     }),
+
+  // Nueva función para buscar transacción por referencia (Devoluciones)
+  buscarPorReferencia: (referencia) =>
+    request(`/api/transacciones/buscar/${referencia}`),
+
+  // Obtener motivos de devolución (catálogo ISO)
+  getMotivosDevolucion: () =>
+    request("/api/transacciones/motivos-devolucion"),
+
+  // Solicitar devolución/reverso
+  solicitarReverso: (body) =>
+    request("/api/transacciones/reverso", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 };

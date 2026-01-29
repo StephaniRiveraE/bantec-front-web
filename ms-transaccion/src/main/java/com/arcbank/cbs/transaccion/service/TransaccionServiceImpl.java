@@ -436,6 +436,16 @@ public class TransaccionServiceImpl implements TransaccionService {
         return mapearADTO(t, null);
     }
 
+    @Override
+    public TransaccionResponseDTO buscarPorReferencia(String referencia) {
+        if (referencia == null || referencia.isBlank()) {
+            throw new BusinessException("La referencia no puede estar vacía.");
+        }
+        Transaccion t = transaccionRepository.findByReferencia(referencia)
+                .orElseThrow(() -> new BusinessException("Transacción no encontrada con referencia: " + referencia));
+        return mapearADTO(t, null);
+    }
+
     private BigDecimal procesarSaldo(Integer idCuenta, BigDecimal montoCambio) {
         BigDecimal saldoActual;
 

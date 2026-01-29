@@ -41,6 +41,12 @@ public class Controller {
         return ResponseEntity.ok(java.util.Map.of("message", "Solicitud de reverso procesada exitosamente"));
     }
 
+    @GetMapping("/buscar/{referencia}")
+    @Operation(summary = "Buscar transacción por referencia")
+    public ResponseEntity<TransaccionResponseDTO> buscarPorReferencia(@PathVariable String referencia) {
+        return ResponseEntity.ok(transaccionService.buscarPorReferencia(referencia));
+    }
+
     @GetMapping("/motivos-devolucion")
     @Operation(summary = "Listar motivos de devolución (desde Switch)")
     public ResponseEntity<List<java.util.Map<String, String>>> obtenerMotivosDevolucion() {

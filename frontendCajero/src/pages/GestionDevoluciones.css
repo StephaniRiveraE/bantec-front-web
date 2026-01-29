@@ -1,0 +1,256 @@
+.dev-container {
+    display: flex;
+    min-height: 100vh;
+    background-color: #f7f7f7;
+}
+
+.dev-main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+}
+
+.dev-header-box {
+    background-color: #ffffff;
+    padding: 30px 60px;
+    border-radius: 12px;
+    border: 2px solid #dc3545;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    min-width: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 40px;
+}
+
+.dev-header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.dev-header-icon {
+    width: 50px;
+    height: 50px;
+    background-color: #dc3545;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 24px;
+}
+
+.dev-title {
+    font-size: 26px;
+    font-weight: bold;
+    color: #333333;
+    margin: 0;
+}
+
+.dev-card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 30px 40px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 700px;
+}
+
+.dev-form-group {
+    margin-bottom: 20px;
+}
+
+.dev-form-group label {
+    display: block;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.dev-input-row {
+    display: flex;
+    gap: 12px;
+}
+
+.dev-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.2s;
+}
+
+.dev-input:focus {
+    outline: none;
+    border-color: #ffb300;
+}
+
+.dev-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dev-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.dev-btn-primary {
+    background-color: #ffb300;
+    color: #000;
+}
+
+.dev-btn-primary:hover:not(:disabled) {
+    background-color: #ffa000;
+}
+
+.dev-btn-secondary {
+    background-color: #e0e0e0;
+    color: #333;
+}
+
+.dev-btn-secondary:hover:not(:disabled) {
+    background-color: #d0d0d0;
+}
+
+.dev-btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.dev-btn-danger:hover:not(:disabled) {
+    background-color: #c82333;
+}
+
+.dev-error {
+    background-color: #ffe6e6;
+    color: #dc3545;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.dev-success {
+    background-color: #e6ffe6;
+    color: #28a745;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.dev-transaction-details {
+    border-top: 2px solid #f0f0f0;
+    padding-top: 24px;
+    margin-top: 20px;
+}
+
+.dev-transaction-details h3 {
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.dev-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.dev-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dev-detail-item.dev-full-width {
+    grid-column: span 2;
+}
+
+.dev-label {
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.dev-value {
+    font-size: 16px;
+    color: #333;
+    font-weight: 500;
+}
+
+.dev-amount {
+    font-size: 20px;
+    font-weight: 700;
+    color: #28a745;
+}
+
+.dev-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+    width: fit-content;
+}
+
+.dev-status-completada {
+    background-color: #e6ffe6;
+    color: #28a745;
+}
+
+.dev-status-pendiente {
+    background-color: #fff3e0;
+    color: #ff9800;
+}
+
+.dev-status-fallida,
+.dev-status-reversada,
+.dev-status-devuelta {
+    background-color: #ffe6e6;
+    color: #dc3545;
+}
+
+.dev-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 24px;
+    justify-content: flex-end;
+}
+
+.dev-back-link {
+    margin-top: 30px;
+    background: none;
+    border: none;
+    color: #2d3dca;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s;
+}
+
+.dev-back-link:hover {
+    color: #1a237e;
+}

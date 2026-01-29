@@ -12,25 +12,27 @@ import com.arcbank.cbs.transaccion.dto.SwitchRefundRequest;
 
 public interface TransaccionService {
 
-    TransaccionResponseDTO crearTransaccion(TransaccionRequestDTO request);
+        TransaccionResponseDTO crearTransaccion(TransaccionRequestDTO request);
 
-    List<TransaccionResponseDTO> obtenerPorCuenta(Integer idCuenta);
+        List<TransaccionResponseDTO> obtenerPorCuenta(Integer idCuenta);
 
-    TransaccionResponseDTO obtenerPorId(Integer id);
+        TransaccionResponseDTO obtenerPorId(Integer id);
 
-    void procesarTransferenciaEntrante(String instructionId, String cuentaDestino,
-            BigDecimal monto, String bancoOrigen);
+        void procesarTransferenciaEntrante(String instructionId, String cuentaDestino,
+                        BigDecimal monto, String bancoOrigen);
 
-    void procesarDevolucionEntrante(SwitchRefundRequest request);
+        void procesarDevolucionEntrante(SwitchRefundRequest request);
 
-    void solicitarReverso(RefoundRequestDTO request);
+        void solicitarReverso(RefoundRequestDTO request);
 
-    List<Map<String, String>> obtenerMotivosDevolucion();
+        List<Map<String, String>> obtenerMotivosDevolucion();
 
-    String consultarEstadoTransferencia(String instructionId);
+        String consultarEstadoTransferencia(String instructionId);
 
-    com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaExterna(String targetBankId,
-            String targetAccountNumber);
+        com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaExterna(String targetBankId,
+                        String targetAccountNumber);
 
-    com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaLocal(String numeroCuenta);
+        com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaLocal(String numeroCuenta);
+
+        TransaccionResponseDTO buscarPorReferencia(String referencia);
 }
