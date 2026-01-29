@@ -839,8 +839,10 @@ public class TransaccionServiceImpl implements TransaccionService {
     }
 
     // Lista de códigos de banco que se consideran locales (mismo sistema)
+    // SOLO incluir el código BIC de BANTEC - otros bancos deben validarse via
+    // Switch
     private static final java.util.Set<String> BANCOS_LOCALES = java.util.Set.of(
-            "BANTEC", "ARCBANK" // ARCBANK es un alias del sistema local usado en el Switch de demo
+            "BANTEC" // Solo nuestro propio banco es local
     );
 
     @Override
@@ -943,9 +945,9 @@ public class TransaccionServiceImpl implements TransaccionService {
             }
 
         } catch (Exception e) {
-            log.error("Error validando cuenta local: {}", e.getMessage());
+            log.error("❌ Error validando cuenta local {}: {}", numeroCuenta, e.getMessage(), e);
             data.setExists(false);
-            data.setMensaje("Error interno en validación local");
+            data.setMensaje("Error interno en validación local: " + e.getMessage());
             return new com.arcbank.cbs.transaccion.dto.AccountLookupResponse("FAILED", data);
         }
     }
