@@ -1,4 +1,3 @@
-
 * {
   font-family: "Segoe UI", Arial, sans-serif;
   box-sizing: border-box;
@@ -10,32 +9,62 @@
   align-items: center;
   min-height: 100vh;
   padding: 20px;
-  background: #ffffff;
+  background: var(--bg);
 
-  max-width: 1100px;   
-  margin: 0 auto;      
-  gap: 15px;           
+  max-width: 1100px;
+  margin: 0 auto;
+  gap: 15px;
 }
 
 @media (max-width: 900px) {
-  .login-container { flex-direction: column; max-width: 100%; padding: 12px; }
-  .left-section, .right-section { width: 100%; }
-  .login-box { width: 100%; padding: 20px; }
-  .side-img { width: 220px; margin: 10px auto 0; }
-  .logo { width: 200px; }
-  .security-text { font-size: 16px; }
+  .login-container {
+    flex-direction: column;
+    max-width: 100%;
+    padding: 12px;
+  }
+
+  .left-section,
+  .right-section {
+    width: 100%;
+  }
+
+  .login-box {
+    width: 100%;
+    padding: 20px;
+  }
+
+  .side-img {
+    width: 220px;
+    margin: 10px auto 0;
+  }
+
+  .logo {
+    width: 200px;
+  }
+
+  .security-text {
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 480px) {
-  .login-box { padding: 16px; }
-  .login-box h1 { font-size: 28px; }
-  .subtitle { font-size: 14px; }
+  .login-box {
+    padding: 16px;
+  }
+
+  .login-box h1 {
+    font-size: 28px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+  }
 }
 
 
 
 .left-section {
-  width: 45%;                   
+  width: 45%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -43,39 +72,49 @@
 
 
 .logo {
-  width: 260px;                
+  width: 260px;
   margin-bottom: 18px;
 }
 
 
 .login-box {
-  background: #e6e6e6;
-  width: 460px;                 
-  padding: 32px 42px;           
-  border-radius: 12px;
+  background: var(--bg-secondary);
+  width: 460px;
+  padding: 32px 42px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
 }
 
 .login-box h1 {
-  font-size: 36px;              
+  font-size: 36px;
   margin: 0;
-  color: #222;
+  color: var(--primary-dark);
+  font-weight: 800;
 }
 
 .subtitle {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 15px;
-  color: #555;
-  margin-bottom: 22px;
+  color: var(--muted);
+  margin-bottom: 24px;
 }
 
 
 .input-group {
-  background: white;
-  border: 2px solid #c9c9c9;
-  border-radius: 6px;
-  padding: 11px;
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
   display: flex;
   align-items: center;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.input-group:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
 }
 
 .input-group input {
@@ -83,13 +122,15 @@
   outline: none;
   font-size: 16px;
   width: 100%;
+  background: transparent;
+  color: var(--dark);
 }
 
 
 .icon {
-  margin-right: 10px;
-  color: gray;
-  font-size: 15px;
+  margin-right: 12px;
+  color: var(--primary);
+  font-size: 18px;
 }
 
 .icon-right {
@@ -111,19 +152,23 @@
 
 .btn-login {
   width: 100%;
-  background: #ffb300;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
   border: none;
-  padding: 13px;
-  border-radius: 8px;
+  padding: 14px;
+  border-radius: 10px;
   font-size: 18px;
   font-weight: 700;
-  margin-top: 12px;
+  margin-top: 16px;
   cursor: pointer;
-  color: #000;
+  color: #fff;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(30, 58, 95, 0.2);
 }
 
 .btn-login:hover {
-  background: #e0a000;
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(30, 58, 95, 0.25);
 }
 
 
@@ -134,7 +179,7 @@
 
 
 .right-section {
-  width: 45%;                    
+  width: 45%;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -142,17 +187,17 @@
 
 
 .security-text {
-  font-size: 22px;            
-  font-weight: 600;           
-  color: #222;
-  width: 80%;                 
-  margin-bottom: 30px;        
-  line-height: 1.5;          
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--dark);
+  width: 80%;
+  margin-bottom: 30px;
+  line-height: 1.5;
 }
 
 
 .side-img {
   width: 400px;
   margin-top: -20px;
-                   
+
 }

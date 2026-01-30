@@ -173,6 +173,41 @@ export default function GestionDevoluciones() {
                     {transaccion && (
                         <div className="dev-transaction-details">
                             <h3>Detalles de la Transacción</h3>
+
+                            {/* Información del Origen */}
+                            <div className="dev-section-header">
+                                <i className="fa-solid fa-user"></i> Origen (Quién envió)
+                            </div>
+                            <div className="dev-details-grid">
+                                <div className="dev-detail-item">
+                                    <span className="dev-label">Cuenta Origen</span>
+                                    <span className="dev-value">{transaccion.numeroCuentaOrigen || "N/A"}</span>
+                                </div>
+                                <div className="dev-detail-item">
+                                    <span className="dev-label">Titular</span>
+                                    <span className="dev-value dev-highlight">{transaccion.nombreOrigen || "N/A"}</span>
+                                </div>
+                            </div>
+
+                            {/* Información del Destino */}
+                            <div className="dev-section-header">
+                                <i className="fa-solid fa-building-columns"></i> Destino (A quién recibió)
+                            </div>
+                            <div className="dev-details-grid">
+                                <div className="dev-detail-item">
+                                    <span className="dev-label">Cuenta Destino</span>
+                                    <span className="dev-value">{transaccion.numeroCuentaDestino || transaccion.cuentaExterna || "N/A"}</span>
+                                </div>
+                                <div className="dev-detail-item">
+                                    <span className="dev-label">Beneficiario</span>
+                                    <span className="dev-value">{transaccion.nombreDestino || transaccion.idBancoExterno || "N/A"}</span>
+                                </div>
+                            </div>
+
+                            {/* Información de la Transacción */}
+                            <div className="dev-section-header">
+                                <i className="fa-solid fa-receipt"></i> Datos de la Transacción
+                            </div>
                             <div className="dev-details-grid">
                                 <div className="dev-detail-item">
                                     <span className="dev-label">ID</span>
@@ -207,6 +242,13 @@ export default function GestionDevoluciones() {
                                     <span className="dev-value">{transaccion.descripcion || "Sin descripción"}</span>
                                 </div>
                             </div>
+
+                            {/* Nota informativa */}
+                            <div className="dev-info-note">
+                                <i className="fa-solid fa-circle-info"></i>
+                                <span>Al ejecutar la devolución, el dinero será devuelto a <strong>{transaccion.nombreOrigen || "la cuenta origen"}</strong> ({transaccion.numeroCuentaOrigen || "cuenta origen"}).</span>
+                            </div>
+
 
                             <div className="dev-form-group" style={{ marginTop: 24 }}>
                                 <label>Motivo de Devolución</label>

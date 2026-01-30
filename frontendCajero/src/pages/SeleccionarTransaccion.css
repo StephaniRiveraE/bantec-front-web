@@ -1,7 +1,7 @@
 .sel-container {
   display: flex;
   min-height: 100vh;
-  background-color: #f7f7f7;
+  background-color: var(--bg);
 }
 
 
@@ -16,11 +16,11 @@
 
 
 .sel-header-box {
-  background-color: #ffffff;
+  background-color: var(--card);
   padding: 40px 80px;
-  border-radius: 12px;
-  border: 2px solid #ffffff;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
   min-width: 600px;
   display: flex;
   align-items: center;
@@ -29,41 +29,31 @@
 }
 
 .sel-header-icon {
-  width: 50px;
-  height: 50px;
-  background-color: #ffb300;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
   margin-right: 25px;
-}
-
-.sel-header-icon {
-  width: 50px;
-  height: 50px;
-  background-color: #ffb300;
-  border-radius: 50%;
-
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 0;
+  color: #fff;
+  font-size: 24px;
 }
 
 .sel-user-name {
-  font-size: 30px;
-  font-weight: bold;
-  color: #333333;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--dark);
   margin: 0;
   padding: 0;
+  letter-spacing: -0.5px;
 }
 
 
 .sel-subtitle {
-  font-size: 26px;
-  color: #555555;
+  font-size: 24px;
+  color: var(--muted);
   margin-top: 0;
   margin-bottom: 40px;
   font-weight: 500;
@@ -74,43 +64,45 @@
 .sel-options {
   display: flex;
   flex-direction: column;
-  gap: 25px;
+  gap: 20px;
   width: 100%;
   max-width: 600px;
 }
 
 
 .sel-option-card {
-  background-color: #ffffff;
-  border: 2px solid #ffb300;
-  border-radius: 12px;
-  padding: 40px 45px;
+  background-color: var(--card);
+  border: 2px solid var(--primary);
+  border-radius: 14px;
+  padding: 36px 40px;
   display: flex;
   align-items: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.2s, transform 0.2s;
+  box-shadow: var(--shadow);
+  transition: all 0.25s ease;
 }
 
 .sel-option-card:hover {
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
   cursor: pointer;
+  border-color: var(--primary-dark);
+  background: linear-gradient(135deg, rgba(30, 58, 95, 0.02), rgba(30, 58, 95, 0.05));
 }
 
 
 .sel-option-icon {
-  font-size: 50px;
-  color: #020202;
-  margin-right: 30px;
+  font-size: 44px;
+  color: var(--primary);
+  margin-right: 28px;
   width: 50px;
   text-align: center;
 }
 
 
 .sel-option-title {
-  font-size: 28px;
-  font-weight: bold;
-  color: #333333;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--dark);
   margin: 0;
   flex-grow: 1;
 }
@@ -118,23 +110,28 @@
 
 .sel-btn {
   background: none;
-  color: #2d3dca;
+  color: var(--primary);
   border: none;
   padding: 12px 25px;
   cursor: pointer;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   text-decoration: none;
   transition: color 0.2s;
 }
 
 .sel-btn:hover {
-  color: #000000;
+  color: var(--primary-dark);
 }
 
 /* Estilo especial para la tarjeta de Devoluciones */
 .sel-option-devoluciones {
   border-color: #dc3545;
+}
+
+.sel-option-devoluciones:hover {
+  border-color: #b02a37;
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.02), rgba(220, 53, 69, 0.05));
 }
 
 .sel-option-devoluciones .sel-option-icon {

@@ -489,6 +489,28 @@ public class TransaccionServiceImpl implements TransaccionService {
             saldoAMostrar = t.getSaldoResultanteDestino();
         }
 
+        // Obtener información de cuenta origen
+        String numeroCuentaOrigen = null;
+        String nombreOrigen = null;
+        if (t.getIdCuentaOrigen() != null) {
+            Map<String, String> infoOrigen = obtenerInfoCuenta(t.getIdCuentaOrigen());
+            numeroCuentaOrigen = infoOrigen.get("numeroCuenta");
+            nombreOrigen = infoOrigen.get("nombreCliente");
+        }
+
+        // Obtener información de cuenta destino
+        String numeroCuentaDestino = null;
+        String nombreDestino = null;
+        if (t.getIdCuentaDestino() != null) {
+            Map<String, String> infoDestino = obtenerInfoCuenta(t.getIdCuentaDestino());
+            numeroCuentaDestino = infoDestino.get("numeroCuenta");
+            nombreDestino = infoDestino.get("nombreCliente");
+        } else if (t.getCuentaExterna() != null) {
+            // Para transferencias externas, usar la cuenta externa y banco
+            numeroCuentaDestino = t.getCuentaExterna();
+            nombreDestino = t.getIdBancoExterno() != null ? "Cliente " + t.getIdBancoExterno() : "Cuenta Externa";
+        }
+
         return TransaccionResponseDTO.builder()
                 .idTransaccion(t.getIdTransaccion())
                 .referencia(t.getReferencia())
@@ -503,7 +525,53 @@ public class TransaccionServiceImpl implements TransaccionService {
                 .descripcion(t.getDescripcion())
                 .canal(t.getCanal())
                 .estado(t.getEstado())
+                // Nuevos campos de origen/destino
+                .numeroCuentaOrigen(numeroCuentaOrigen)
+                .nombreOrigen(nombreOrigen)
+                .numeroCuentaDestino(numeroCuentaDestino)
+                .nombreDestino(nombreDestino)
                 .build();
+    }
+
+    /**
+     * Obtiene el número de cuenta y nombre del cliente para un ID de cuenta.
+     */
+    private Map<String, String> obtenerInfoCuenta(Integer idCuenta) {
+        Map<String, String> info = new java.util.HashMap<>();
+        try {
+            Map<String, Object> cuenta = cuentaCliente.obtenerCuenta(idCuenta);
+            if (cuenta != null) {
+                if (cuenta.get("numeroCuenta") != null) {
+                    info.put("numeroCuenta", cuenta.get("numeroCuenta").toString());
+                }
+                // Obtener nombre del cliente
+                if (cuenta.get("idCliente") != null) {
+                    try {
+                        Integer idCliente = Integer.valueOf(cuenta.get("idCliente").toString());
+                        Map<String, Object> cliente = clienteClient.obtenerCliente(idCliente);
+                        if (cliente != null) {
+                            String nombre = "";
+                            if (cliente.get("nombreCompleto") != null) {
+                                nombre = cliente.get("nombreCompleto").toString();
+                            } else if (cliente.get("nombres") != null) {
+                                nombre = cliente.get("nombres").toString();
+                                if (cliente.get("apellidos") != null) {
+                                    nombre += " " + cliente.get("apellidos");
+                                }
+                            }
+                            if (!nombre.trim().isEmpty()) {
+                                info.put("nombreCliente", nombre.trim());
+                            }
+                        }
+                    } catch (Exception ex) {
+                        log.warn("No se pudo obtener nombre del cliente para cuenta {}: {}", idCuenta, ex.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo obtener info de cuenta {}: {}", idCuenta, e.getMessage());
+        }
+        return info;
     }
 
     private String obtenerNumeroCuenta(Integer idCuenta) {

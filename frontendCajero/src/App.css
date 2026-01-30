@@ -1,19 +1,78 @@
-.header{
-  background:var(--dark);
-  color:#fff;
-  padding:12px 20px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+.header {
+  background: var(--primary-dark);
+  color: #fff;
+  padding: 14px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow-lg);
 }
-.header .left{font-weight:700}
-.header .right{display:flex;gap:12px;align-items:center}
-.header .user{font-size:0.95rem}
-.logo{font-weight:800}
-.card{
-  background:var(--card);
-  padding:16px;
-  border-radius:10px;
-  box-shadow:0 2px 8px rgba(2,6,23,0.06);
+
+.header .left {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.5px
 }
-.small-muted{color:var(--muted);font-size:0.9rem}
+
+.header .right {
+  display: flex;
+  gap: 16px;
+  align-items: center
+}
+
+.header .user {
+  font-size: 0.95rem;
+  opacity: 0.9
+}
+
+.logo {
+  font-weight: 800;
+  color: #fff
+}
+
+.card {
+  background: var(--card);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.small-muted {
+  color: var(--muted);
+  font-size: 0.9rem
+}
+
+/* Botones primarios */
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+}
+
+/* Botones secundarios */
+.btn-secondary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.btn-secondary:hover {
+  background: var(--accent-hover);
+}

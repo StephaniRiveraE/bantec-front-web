@@ -1,7 +1,7 @@
 .dev-container {
     display: flex;
     min-height: 100vh;
-    background-color: #f7f7f7;
+    background-color: var(--bg);
 }
 
 .dev-main {
@@ -13,11 +13,11 @@
 }
 
 .dev-header-box {
-    background-color: #ffffff;
+    background-color: var(--card);
     padding: 30px 60px;
-    border-radius: 12px;
+    border-radius: 14px;
     border: 2px solid #dc3545;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-lg);
     min-width: 500px;
     display: flex;
     align-items: center;
@@ -45,16 +45,17 @@
 
 .dev-title {
     font-size: 26px;
-    font-weight: bold;
-    color: #333333;
+    font-weight: 700;
+    color: var(--dark);
     margin: 0;
 }
 
 .dev-card {
-    background-color: #ffffff;
-    border-radius: 12px;
+    background-color: var(--card);
+    border-radius: 14px;
     padding: 30px 40px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
     width: 100%;
     max-width: 700px;
 }
@@ -66,7 +67,7 @@
 .dev-form-group label {
     display: block;
     font-weight: 600;
-    color: #555;
+    color: var(--dark);
     margin-bottom: 8px;
     font-size: 14px;
 }
@@ -79,15 +80,18 @@
 .dev-input {
     flex: 1;
     padding: 12px 16px;
-    border: 2px solid #e0e0e0;
+    border: 2px solid var(--border);
     border-radius: 8px;
     font-size: 16px;
     transition: border-color 0.2s;
+    background: var(--bg);
+    color: var(--dark);
 }
 
 .dev-input:focus {
     outline: none;
-    border-color: #ffb300;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
 }
 
 .dev-btn {
@@ -106,21 +110,22 @@
 }
 
 .dev-btn-primary {
-    background-color: #ffb300;
-    color: #000;
+    background-color: var(--primary);
+    color: #fff;
 }
 
 .dev-btn-primary:hover:not(:disabled) {
-    background-color: #ffa000;
+    background-color: var(--primary-dark);
 }
 
 .dev-btn-secondary {
-    background-color: #e0e0e0;
-    color: #333;
+    background-color: var(--bg-secondary);
+    color: var(--dark);
+    border: 1px solid var(--border);
 }
 
 .dev-btn-secondary:hover:not(:disabled) {
-    background-color: #d0d0d0;
+    background-color: var(--border);
 }
 
 .dev-btn-danger {
@@ -241,7 +246,7 @@
     margin-top: 30px;
     background: none;
     border: none;
-    color: #2d3dca;
+    color: var(--primary);
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
@@ -252,5 +257,56 @@
 }
 
 .dev-back-link:hover {
-    color: #1a237e;
+    color: var(--primary-dark);
+}
+
+/* Section headers for origin/destination/transaction sections */
+.dev-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-top: 20px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 8px;
+}
+
+.dev-section-header i {
+    font-size: 16px;
+}
+
+/* Highlighted values */
+.dev-highlight {
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+
+/* Info note at the bottom */
+.dev-info-note {
+    background: linear-gradient(135deg, rgba(30, 58, 95, 0.08), rgba(30, 58, 95, 0.03));
+    border: 1px solid var(--primary);
+    border-left: 4px solid var(--primary);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-top: 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--dark);
+}
+
+.dev-info-note i {
+    color: var(--primary);
+    font-size: 18px;
+    margin-top: 2px;
+}
+
+.dev-info-note strong {
+    color: var(--primary-dark);
 }

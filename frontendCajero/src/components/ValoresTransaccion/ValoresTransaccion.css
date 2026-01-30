@@ -1,5 +1,5 @@
 .retiro-page {
-  background: #ffffff;
+  background: var(--bg);
   min-height: 100vh;
 }
 
@@ -32,15 +32,16 @@
 .rh-user-icon {
   width: 36px;
   height: 36px;
-  background: #ffb300;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
+  color: #fff;
 }
 
 .rh-user-icon i {
-  color: #000;
+  color: #fff;
   font-size: 18px;
 }
 
@@ -97,32 +98,43 @@
 
 .cedula-input {
   flex: 1;
-  border-radius: 30px;
-  border: 1px solid #f0b201;
-  padding: 10px 28px;
+  border-radius: 10px;
+  border: 2px solid var(--primary);
+  padding: 12px 20px;
   font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.cedula-input:focus {
+  outline: none;
+  border-color: var(--primary-dark);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
 }
 
 .btn-buscar {
-  background: #ffb300;
+  background: var(--primary);
+  color: #fff;
   border: none;
-  padding: 10px 45px;     
-  border-radius: 8px;
+  padding: 12px 45px;
+  border-radius: 10px;
   cursor: pointer;
   font-weight: 700;
   font-size: 14px;
-  min-width: 140px;      
-  transition: 0.2s;
+  min-width: 140px;
+  transition: all 0.2s ease;
 }
+
 .btn-buscar:hover {
-  background: #e09f00;
+  background: var(--primary-dark);
+  transform: translateY(-1px);
 }
 
 
 .retiro-panel {
   margin-top: 12px;
-  background: #d7d7d7;
-  border-radius: 18px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
   padding: 25px 45px;
   display: flex;
   gap: 40px;
@@ -137,23 +149,23 @@
 }
 
 .retiro-left {
-   flex: 0 0 48%;                
+  flex: 0 0 48%;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
 .retiro-right {
-   flex: 0 0 30%;                
+  flex: 0 0 30%;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding-top: 10px; 
+  padding-top: 10px;
 }
 
 .retiro-divider {
-  flex: 0 0 1px;               
-  background: #bcbcbc;          
+  flex: 0 0 1px;
+  background: #bcbcbc;
   margin: 0 25px;
 }
 
@@ -169,11 +181,18 @@
 }
 
 .field-input {
-  padding: 6px 8px;
-  border-radius: 4px;
-  border: 1px solid #c3c3c3;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
   font-size: 14px;
-  background: #f4f4f4;
+  background: var(--bg);
+  color: var(--dark);
+  transition: border-color 0.2s;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: var(--primary);
 }
 
 .monto-input {
@@ -190,7 +209,7 @@
 .retiro-buttons {
   width: 1660px;
   display: flex;
-  justify-content: center;   
+  justify-content: center;
   gap: 30px;
   margin-top: 45px;
 }
@@ -208,16 +227,50 @@
 }
 
 @media (max-width: 900px) {
+
   /* Keep header single-line and prevent wrapping */
-  .retiro-header { position: relative; display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; height: 64px; }
+  .retiro-header {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    height: 64px;
+  }
 
   /* Left fixed size, center flexible, right fixed size */
-  .rh-left { order: 1; display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
-  .rh-center { order: 2; flex: 1 1 auto; text-align: center; display: block; padding: 0 88px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 16px; }
-  .rh-right { order: 3; display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+  .rh-left {
+    order: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 0 0 auto;
+  }
+
+  .rh-center {
+    order: 2;
+    flex: 1 1 auto;
+    text-align: center;
+    display: block;
+    padding: 0 88px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 16px;
+  }
+
+  .rh-right {
+    order: 3;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex: 0 0 auto;
+  }
 
   /* Hide full link buttons in header on small screens (keep hamburger only) */
-  .rh-right .rh-link { display: none; }
+  .rh-right .rh-link {
+    display: none;
+  }
 
   /* Hamburger fixed at right edge (not below text) */
   .rh-hamburger {
@@ -243,7 +296,7 @@
     z-index: 1200;
     background: #ffffff;
     border: 1px solid #e6e6e6;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
     padding: 8px;
     border-radius: 8px;
     display: flex;
@@ -253,31 +306,48 @@
   }
 
   /* In the mobile menu, show icon + text */
-  .mobile-menu .rh-link { display: flex; align-items: center; gap: 8px; font-size: 15px; padding: 8px; }
-  .mobile-menu .rh-link .link-text { display: inline; }
+  .mobile-menu .rh-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    padding: 8px;
+  }
+
+  .mobile-menu .rh-link .link-text {
+    display: inline;
+  }
 }
 
 .btn-amarillo {
-  background: #ffb300;
+  background: var(--primary);
+  color: #fff;
   border: none;
-  padding: 10px 30px;
-  border-radius: 15px;
+  padding: 12px 30px;
+  border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-amarillo:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
 }
 
 .btn-cancelar {
-  background: linear-gradient(180deg, #ffb300, #f08c00);
+  background: linear-gradient(180deg, var(--primary), var(--primary-dark));
 }
 
 
 
 .deposito-page .deposit-panel {
-  width: 1100px;     
-  max-width: 95%;    
-  margin: 0 auto;    
-  background: #d7d7d7;
-  border-radius: 18px;
+  width: 1100px;
+  max-width: 95%;
+  margin: 0 auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
   padding: 30px 50px 35px;
   display: flex;
   flex-direction: column;
@@ -286,19 +356,19 @@
 
 
 .deposit-top-row {
-   display: flex;
-  align-items: stretch; 
+  display: flex;
+  align-items: stretch;
   width: 100%;
-  min-height: 240px; 
+  min-height: 240px;
 }
 
 
 .deposit-col {
- flex: 1;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  height: 100%; 
+  height: 100%;
 }
 
 
@@ -306,7 +376,7 @@
   width: 2px;
   background: #909090;
   margin: 0 35px;
-  align-self: stretch;      
+  align-self: stretch;
   opacity: 1;
 }
 
@@ -334,32 +404,101 @@
 
 /* Responsive adjustments */
 @media (max-width: 900px) {
-  .retiro-header { flex-direction: column; align-items: flex-start; gap: 12px; padding: 12px; }
-  .rh-center { order: 3; font-size: 16px; }
-  .rh-right { order: 2; display: flex; gap: 8px; }
-  .rh-left { order: 1; }
+  .retiro-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+  }
 
-  .retiro-main { padding: 16px; }
-  .retiro-panel { flex-direction: column; padding: 18px; gap: 12px; }
-  .retiro-left, .retiro-right { flex: 1 1 auto; }
-  .retiro-divider { display: none; }
+  .rh-center {
+    order: 3;
+    font-size: 16px;
+  }
 
-  .cedula-input-row { flex-direction: column; align-items: stretch; }
-  .btn-buscar { width: 100%; padding: 10px; min-width: 0; }
+  .rh-right {
+    order: 2;
+    display: flex;
+    gap: 8px;
+  }
 
-  .retiro-buttons { width: 100%; justify-content: center; }
-  .btn-amarillo { width: 48%; }
+  .rh-left {
+    order: 1;
+  }
 
-  .deposit-top-row { flex-direction: column; min-height: auto; }
-  .deposit-divider { display: none; }
-  .deposit-monto-row .monto-input { width: 100%; }
-  .deposit-panel { padding: 16px; }
+  .retiro-main {
+    padding: 16px;
+  }
+
+  .retiro-panel {
+    flex-direction: column;
+    padding: 18px;
+    gap: 12px;
+  }
+
+  .retiro-left,
+  .retiro-right {
+    flex: 1 1 auto;
+  }
+
+  .retiro-divider {
+    display: none;
+  }
+
+  .cedula-input-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-buscar {
+    width: 100%;
+    padding: 10px;
+    min-width: 0;
+  }
+
+  .retiro-buttons {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-amarillo {
+    width: 48%;
+  }
+
+  .deposit-top-row {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .deposit-divider {
+    display: none;
+  }
+
+  .deposit-monto-row .monto-input {
+    width: 100%;
+  }
+
+  .deposit-panel {
+    padding: 16px;
+  }
 }
 
 @media (max-width: 480px) {
-  .rh-logo { height: 36px; }
-  .cedula-label { font-size: 20px; margin-bottom: 16px; }
-  .field-input, .cedula-input { padding: 10px; }
-  .btn-buscar { padding: 10px; }
-}
+  .rh-logo {
+    height: 36px;
+  }
 
+  .cedula-label {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .field-input,
+  .cedula-input {
+    padding: 10px;
+  }
+
+  .btn-buscar {
+    padding: 10px;
+  }
+}

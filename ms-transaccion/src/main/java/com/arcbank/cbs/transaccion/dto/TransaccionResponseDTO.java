@@ -31,4 +31,10 @@ public class TransaccionResponseDTO {
     private String canal;
     private String estado;
     private String mensajeUsuario;
+
+    // Campos adicionales para mostrar información del origen/destino
+    private String numeroCuentaOrigen;
+    private String nombreOrigen;
+    private String numeroCuentaDestino;
+    private String nombreDestino;
 }
