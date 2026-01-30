@@ -254,8 +254,9 @@ export default function Movimientos() {
                               className="btn-verify-sm"
                               onClick={() => handleCheckStatus(tx)}
                               title="Verificar estado"
+                              style={{ width: 'auto', padding: '4px 12px', fontWeight: 'bold' }}
                             >
-                              <FiRefreshCw />
+                              Estado
                             </button>
                           )}
                         </td>
