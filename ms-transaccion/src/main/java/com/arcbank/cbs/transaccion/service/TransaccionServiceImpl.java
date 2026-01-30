@@ -441,8 +441,21 @@ public class TransaccionServiceImpl implements TransaccionService {
         if (referencia == null || referencia.isBlank()) {
             throw new BusinessException("La referencia no puede estar vacía.");
         }
+
+        // INTENTO 1: Si es un número, buscamos por ID Transacción primero
+        if (referencia.matches("\\d+")) {
+            try {
+                Integer id = Integer.parseInt(referencia);
+                return obtenerPorId(id);
+            } catch (BusinessException | NumberFormatException e) {
+                // Si no se encuentra por ID, seguimos para intentar por referencia (string)
+                log.info("No se encontró por ID {}, intentando por referencia string...", referencia);
+            }
+        }
+
+        // INTENTO 2: Buscar por UUID/Referencia String
         Transaccion t = transaccionRepository.findByReferencia(referencia)
-                .orElseThrow(() -> new BusinessException("Transacción no encontrada con referencia: " + referencia));
+                .orElseThrow(() -> new BusinessException("Transacción no encontrada con referencia/ID: " + referencia));
         return mapearADTO(t, null);
     }
 
@@ -885,7 +898,17 @@ public class TransaccionServiceImpl implements TransaccionService {
 
     @Override
     public java.util.List<java.util.Map<String, String>> obtenerMotivosDevolucion() {
-        return switchClient.obtenerMotivosDevolucion();
+        try {
+            return switchClient.obtenerMotivosDevolucion();
+        } catch (Exception e) {
+            log.warn("⚠️ Error obteniendo motivos del Switch (posiblemente caído). Usando fallback local.", e);
+            // Fallback en caso de error del Switch para no bloquear al cajero
+            return java.util.List.of(
+                    java.util.Map.of("codigo", "AC01", "descripcion", "Número de cuenta incorrecto"),
+                    java.util.Map.of("AC04", "AC04", "descripcion", "Cuenta cerrada"),
+                    java.util.Map.of("AM04", "AM04", "descripcion", "Fondos insuficientes"),
+                    java.util.Map.of("MS03", "MS03", "descripcion", "Error técnico (Otro)"));
+        }
     }
 
     private String mapearCodigoErrorInternalToISO(String codigoInterno) {
