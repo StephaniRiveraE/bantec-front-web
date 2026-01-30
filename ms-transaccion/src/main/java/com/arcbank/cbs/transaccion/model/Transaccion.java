@@ -58,6 +58,9 @@ public class Transaccion {
     @Column(name = "\"SaldoResultanteDestino\"", precision = 15, scale = 2)
     private BigDecimal saldoResultanteDestino;
 
+    @Column(name = "\"Beneficiario\"", length = 100)
+    private String beneficiario;
+
     @Column(name = "\"FechaCreacion\"", nullable = false, updatable = false)
     private LocalDateTime fechaCreacion;
 

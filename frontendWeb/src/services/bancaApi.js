@@ -153,8 +153,8 @@ export async function validarCuentaExterna(targetBankId, targetAccountNumber) {
   const normalizeResponse = (resp) => {
     console.log("📦 Respuesta recibida:", resp);
 
-    // Caso 1: Respuesta ya está en formato esperado { status: "SUCCESS", data: { exists, ownerName } }
-    if (resp?.status === "SUCCESS" && resp?.data?.exists !== undefined) {
+    // Caso 1: Respuesta ya está en formato esperado { status: "SUCCESS" | "FAILED", data: { exists, ownerName } }
+    if ((resp?.status === "SUCCESS" || resp?.status === "FAILED") && resp?.data?.exists !== undefined) {
       return resp;
     }
 

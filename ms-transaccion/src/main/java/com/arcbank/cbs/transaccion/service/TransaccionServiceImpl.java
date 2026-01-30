@@ -158,6 +158,9 @@ public class TransaccionServiceImpl implements TransaccionService {
                         String beneficiario = request.getBeneficiario() != null ? request.getBeneficiario()
                                 : "Beneficiario Externo";
 
+                        // Guardar beneficiario en la transacción
+                        trx.setBeneficiario(beneficiario);
+
                         SwitchTransferRequest switchRequest = SwitchTransferRequest.builder()
                                 .header(SwitchTransferRequest.Header.builder()
                                         .messageId(messageId)
@@ -521,7 +524,13 @@ public class TransaccionServiceImpl implements TransaccionService {
         } else if (t.getCuentaExterna() != null) {
             // Para transferencias externas, usar la cuenta externa y banco
             numeroCuentaDestino = t.getCuentaExterna();
-            nombreDestino = t.getIdBancoExterno() != null ? "Cliente " + t.getIdBancoExterno() : "Cuenta Externa";
+            // PRIMACÍA: Usar nombre real guardado (si existe), sino fallback a lógica
+            // antigua
+            if (t.getBeneficiario() != null && !t.getBeneficiario().isBlank()) {
+                nombreDestino = t.getBeneficiario();
+            } else {
+                nombreDestino = t.getIdBancoExterno() != null ? "Cliente " + t.getIdBancoExterno() : "Cuenta Externa";
+            }
         }
 
         return TransaccionResponseDTO.builder()
@@ -792,8 +801,34 @@ public class TransaccionServiceImpl implements TransaccionService {
         Transaccion originalTx = transaccionRepository.findById(requestDTO.getIdTransaccion())
                 .orElseThrow(() -> new BusinessException("Transacción no encontrada"));
 
+        if ("PENDIENTE".equals(originalTx.getEstado()) || "EN_PROCESO".equals(originalTx.getEstado())) {
+            log.info("⚠️ La transacción {} está PENDIENTE. Consultando estado al Switch antes de revertir...",
+                    originalTx.getReferencia());
+            try {
+                SwitchTransferResponse statusResp = switchClient
+                        .consultarEstadoTransferencia(originalTx.getReferencia());
+                if (statusResp != null && statusResp.getData() != null) {
+                    String nuevoEstado = statusResp.getData().getEstado();
+                    log.info("ℹ️ Estado actualizado desde Switch: {}", nuevoEstado);
+
+                    if ("COMPLETED".equalsIgnoreCase(nuevoEstado) || "EXITOSA".equalsIgnoreCase(nuevoEstado)) {
+                        originalTx.setEstado("COMPLETADA");
+                        transaccionRepository.save(originalTx);
+                    } else if ("FAILED".equalsIgnoreCase(nuevoEstado) || "FALLIDA".equalsIgnoreCase(nuevoEstado)) {
+                        originalTx.setEstado("FALLIDA");
+                        originalTx.setDescripcion("FALLIDA (Sync): " + statusResp.getError().getMessage());
+                        transaccionRepository.save(originalTx);
+                        throw new BusinessException("La transacción falló en el Switch, no es necesario revertir.");
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo sincronizar estado con Switch: {}", e.getMessage());
+            }
+        }
+
         if (!"COMPLETADA".equals(originalTx.getEstado()) && !"EXITOSA".equals(originalTx.getEstado())) {
-            throw new BusinessException("Solo se pueden revertir transacciones completadas.");
+            throw new BusinessException(
+                    "Solo se pueden revertir transacciones completadas. Estado actual: " + originalTx.getEstado());
         }
 
         if (originalTx.getIdTransaccionReversa() != null) {
