@@ -132,7 +132,30 @@ export async function getBancos() {
 
 export async function getTransferStatus(instructionId) {
   // RF-04: Consulta de Estado
-  return await request(`/api/v2/switch/transfers/${instructionId}`);
+  // CAMBIO: Consultamos a nuestro Backend (que sincroniza con Switch) en lugar de ir directo al Proxy.
+  try {
+    const tx = await request(`/api/transacciones/buscar/${instructionId}`);
+
+    // Mapeo de estados Español (Backend) -> Inglés (Frontend)
+    let finalState = 'PENDING';
+    const backendStatus = (tx.estado || "").toUpperCase();
+
+    if (backendStatus === 'COMPLETADA' || backendStatus === 'EXITOSA') {
+      finalState = 'COMPLETED';
+    } else if (backendStatus === 'FALLIDA' || backendStatus === 'RECHAZADA' || backendStatus === 'DEVUELTA') {
+      finalState = 'FAILED';
+    }
+
+    return {
+      estado: finalState,
+      codigo: finalState === 'FAILED' ? 'ERR' : 'OK',
+      mensaje: tx.mensajeUsuario || tx.descripcion || ""
+    };
+  } catch (e) {
+    // Si no encuentra la transacción o falla, retornamos PENDING para que siga intentando
+    console.warn("Polling error (API):", e);
+    return { estado: 'PENDING' };
+  }
 }
 
 export async function validarCuentaExterna(targetBankId, targetAccountNumber) {
