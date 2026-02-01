@@ -13,13 +13,13 @@ public interface TransaccionService {
 
         TransaccionResponseDTO crearTransaccion(TransaccionRequestDTO request);
 
-        TransaccionResponseDTO buscarPorId(Long id);
+        TransaccionResponseDTO obtenerPorId(Integer id);
 
         TransaccionResponseDTO buscarPorReferencia(String referencia);
 
-        List<TransaccionResponseDTO> obtenerUltimosMovimientos(Integer cuentaId);
+        List<TransaccionResponseDTO> obtenerPorCuenta(Integer cuentaId);
 
-        TransaccionResponseDTO solicitarDevolucion(RefoundRequestDTO request);
+        void solicitarReverso(RefoundRequestDTO request);
 
         String consultarEstadoTransferencia(String instructionId);
 
@@ -28,4 +28,11 @@ public interface TransaccionService {
         AccountLookupResponse validarCuentaLocal(String accountId);
 
         void procesarDeposito(String cuentaDestino, BigDecimal monto, String ordenante, String instructionId);
+
+        List<Map<String, String>> obtenerMotivosDevolucion();
+
+        void procesarTransferenciaEntrante(String instructionId, String cuentaDestino, BigDecimal monto,
+                        String bancoOrigen);
+
+        void procesarDevolucionEntrante(com.arcbank.cbs.transaccion.dto.SwitchRefundRequest request);
 }
