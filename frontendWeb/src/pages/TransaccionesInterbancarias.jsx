@@ -205,14 +205,14 @@ export default function TransaccionesInterbancarias() {
             let finalState = 'PENDING';
             let finalReason = '';
 
-            // Ciclo de Polling (Fase 2) - Máximo 10 intentos (15s aprox)
-            while (attempts < 10) {
+            // Ciclo de Polling (Fase 2) - Máximo 30 intentos (45s aprox) - AUMENTADO PARA MATCHEAR SWITCH TIMEOUT
+            while (attempts < 30) {
                 await new Promise(r => setTimeout(r, 1500));
 
                 try {
                     const pollRes = await getTransferStatus(txIdInstruccion);
                     const { estado, codigo, mensaje } = pollRes;
-                    console.log(`Polling ${attempts + 1}: Estado=${estado}, Codigo=${codigo}`);
+                    console.log(`Polling ${attempts + 1}/30: Estado=${estado}, Codigo=${codigo}`);
 
                     if (estado === 'COMPLETED') {
                         finalState = 'COMPLETED';
