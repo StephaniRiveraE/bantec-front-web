@@ -64,7 +64,6 @@ public class SwitchFeignDecoderConfig {
 
                 if (body == null || body.isBlank()) {
                     if (response.status() >= 200 && response.status() < 300) {
-                        log.info("✅ Switch returned 2xx with empty body - treating as success");
                         return SwitchTransferResponse.builder()
                                 .success(true)
                                 .build();
@@ -73,41 +72,60 @@ public class SwitchFeignDecoderConfig {
 
                 try {
                     JsonNode rootNode = mapper.readTree(body);
-                    SwitchTransferResponse switchResp = mapper.treeToValue(rootNode, SwitchTransferResponse.class);
 
-                    if (response.status() >= 200 && response.status() < 300) {
-                        if (switchResp.getError() == null || switchResp.getData() != null) {
-                            log.info("✅ Switch returned 2xx - marking as success");
-                            switchResp.setSuccess(true);
-                        }
+                    // LOGIC ADDED: Handle Array Response (List of Transactions)
+                    if (rootNode.isArray()) {
+                        log.warn("⚠️ Switch returned an ARRAY instead of an Object. Attempting to find transaction...");
 
-                        if (rootNode.has("estado")) {
-                            String estado = rootNode.get("estado").asText();
-                            if (estado.matches("(?i)(COMPLETADA|EXITOSA|PROCESADA|SUCCESS|OK|ACCEPTED)")) {
-                                switchResp.setSuccess(true);
+                        // Extract requested ID from URL if possible
+                        String requestUrl = response.request().url();
+                        String requestedId = requestUrl.substring(requestUrl.lastIndexOf('/') + 1);
+                        log.info("🔍 Searching for ID: {} in the response list", requestedId);
+
+                        for (JsonNode node : rootNode) {
+                            String nodeId = "";
+                            if (node.has("idInstruccion"))
+                                nodeId = node.get("idInstruccion").asText();
+                            else if (node.has("instructionId"))
+                                nodeId = node.get("instructionId").asText();
+                            else if (node.has("id"))
+                                nodeId = node.get("id").asText();
+
+                            if (nodeId.equals(requestedId)) {
+                                log.info("✅ Found matching transaction in list!");
+                                // Map flat JSON to our DTO structure manually
+                                return mapJsonNodeToResponse(node, mapper);
                             }
                         }
-                        if (rootNode.has("status")) {
-                            String status = rootNode.get("status").asText();
-                            if (status.matches("(?i)(COMPLETED|SUCCESS|PROCESSED|ACCEPTED|OK)")) {
-                                switchResp.setSuccess(true);
-                            }
+
+                        // If not found specific, maybe it's a list with 1 item?
+                        if (rootNode.size() > 0) {
+                            log.warn("⚠️ Requested ID not found, using FIRST item in list as fallback.");
+                            return mapJsonNodeToResponse(rootNode.get(0), mapper);
                         }
-                        if (rootNode.has("instructionId") || rootNode.has("transactionId") || rootNode.has("id")) {
-                            switchResp.setSuccess(true);
-                        }
+
+                        return SwitchTransferResponse.builder().success(false).build();
                     }
 
-                    return switchResp;
+                    // Handle normal Object response (Recursive or Flat)
+                    // If it matches our DTO directly
+                    try {
+                        SwitchTransferResponse val = mapper.treeToValue(rootNode, SwitchTransferResponse.class);
+                        if (val.getData() != null || val.getError() != null) {
+                            enrichSuccess(val, rootNode);
+                            return val;
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    // Fallback: Map flat JSON object to Response
+                    return mapJsonNodeToResponse(rootNode, mapper);
 
                 } catch (Exception e) {
                     log.error("Error parsing Switch response: {} - Body: {}", e.getMessage(), body);
 
                     if (response.status() >= 200 && response.status() < 300) {
-                        log.info("✅ Switch returned 2xx but couldn't parse - treating as success");
-                        return SwitchTransferResponse.builder()
-                                .success(true)
-                                .build();
+                        return SwitchTransferResponse.builder().success(true).build();
                     }
 
                     return SwitchTransferResponse.builder()
@@ -118,6 +136,41 @@ public class SwitchFeignDecoderConfig {
                                     .build())
                             .build();
                 }
+            }
+
+            private void enrichSuccess(SwitchTransferResponse resp, JsonNode node) {
+                if (resp.getError() == null || resp.getData() != null)
+                    resp.setSuccess(true);
+                if (node.has("estado") && node.get("estado").asText()
+                        .matches("(?i)(COMPLETADA|EXITOSA|PROCESADA|SUCCESS|OK|COMPLETED)")) {
+                    resp.setSuccess(true);
+                }
+            }
+
+            private SwitchTransferResponse mapJsonNodeToResponse(JsonNode node, ObjectMapper mapper) {
+                SwitchTransferResponse.DataBody data = new SwitchTransferResponse.DataBody();
+
+                if (node.has("idInstruccion"))
+                    data.setInstructionId(java.util.UUID.fromString(node.get("idInstruccion").asText()));
+                else if (node.has("instructionId"))
+                    data.setInstructionId(java.util.UUID.fromString(node.get("instructionId").asText()));
+
+                if (node.has("estado"))
+                    data.setEstado(node.get("estado").asText());
+                else if (node.has("status"))
+                    data.setEstado(node.get("status").asText());
+
+                // Default success determination
+                boolean success = false;
+                if (data.getEstado() != null
+                        && data.getEstado().matches("(?i)(COMPLETADA|EXITOSA|PROCESADA|SUCCESS|OK|COMPLETED)")) {
+                    success = true;
+                }
+
+                return SwitchTransferResponse.builder()
+                        .success(success)
+                        .data(data)
+                        .build();
             }
         };
     }

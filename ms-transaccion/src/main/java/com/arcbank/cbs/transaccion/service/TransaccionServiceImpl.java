@@ -411,6 +411,7 @@ public class TransaccionServiceImpl implements TransaccionService {
 
                 if (switchResp != null && switchResp.getData() != null) {
                     String switchStatus = switchResp.getData().getEstado();
+                    log.info("Respuesta del Switch para {}: {}", t.getReferencia(), switchStatus);
 
                     if ("COMPLETED".equalsIgnoreCase(switchStatus) || "EXITOSA".equalsIgnoreCase(switchStatus)) {
                         t.setEstado("COMPLETADA");
