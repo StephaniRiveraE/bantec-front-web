@@ -43,3 +43,11 @@ logging:
     com.arcbank.cbs.transaccion: DEBUG
     org.springframework.web: INFO
     com.arcbank.cbs.transaccion.client: DEBUG
+    com.arcbank.cbs.transaccion.client: DEBUG
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 60000
