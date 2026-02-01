@@ -440,6 +440,7 @@ public class TransaccionServiceImpl implements TransaccionService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public TransaccionResponseDTO buscarPorReferencia(String referencia) {
         if (referencia == null || referencia.isBlank()) {
             throw new BusinessException("La referencia no puede estar vacía.");
