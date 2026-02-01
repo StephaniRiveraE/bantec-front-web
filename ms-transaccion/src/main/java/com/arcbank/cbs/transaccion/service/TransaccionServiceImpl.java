@@ -576,10 +576,15 @@ public class TransaccionServiceImpl implements TransaccionService {
     private Integer obtenerIdCuentaPorNumero(String numeroCuenta) {
         try {
             Map<String, Object> cuenta = cuentaCliente.buscarPorNumero(numeroCuenta);
-            if (cuenta != null && cuenta.get("idCuenta") != null) {
-                return Integer.valueOf(cuenta.get("idCuenta").toString());
+            if (cuenta != null) {
+                if (cuenta.get("idCuenta") != null) {
+                    return Integer.valueOf(cuenta.get("idCuenta").toString());
+                } else if (cuenta.get("id") != null) {
+                    return Integer.valueOf(cuenta.get("id").toString());
+                }
             }
         } catch (Exception e) {
+            log.warn("Error buscando cuenta por numero {}: {}", numeroCuenta, e.getMessage());
         }
         return null;
     }
@@ -1057,18 +1062,11 @@ public class TransaccionServiceImpl implements TransaccionService {
     public void procesarDeposito(String cuentaDestino, BigDecimal monto, String ordenante, String instructionId) {
         log.info("Procesando depósito entrante: {} a cuenta {}", monto, cuentaDestino);
 
-        Map<String, Object> cuentaData;
-        try {
-            cuentaData = cuentaCliente.buscarPorNumero(cuentaDestino);
-        } catch (Exception e) {
-            throw new BusinessException("AC03 - Cuenta no existe o servicio no disponible");
-        }
+        Integer idCuenta = obtenerIdCuentaPorNumero(cuentaDestino);
 
-        if (cuentaData == null || cuentaData.get("id") == null) {
-            throw new BusinessException("AC03 - Cuenta no existe");
+        if (idCuenta == null) {
+            throw new BusinessException("AC03", "AC03 - Cuenta no existe");
         }
-
-        Integer idCuenta = (Integer) cuentaData.get("id");
 
         BigDecimal nuevoSaldo = procesarSaldo(idCuenta, monto);
 

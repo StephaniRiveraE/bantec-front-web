@@ -142,7 +142,7 @@ public class SwitchFeignDecoderConfig {
                 if (resp.getError() == null || resp.getData() != null)
                     resp.setSuccess(true);
                 if (node.has("estado") && node.get("estado").asText()
-                        .matches("(?i)(COMPLETADA|EXITOSA|PROCESADA|SUCCESS|OK|COMPLETED)")) {
+                        .matches("(?i)(COMPLETADA|EXITOSA|PROCESADA|SUCCESS|OK|COMPLETED|QUEUED|ACCEPTED)")) {
                     resp.setSuccess(true);
                 }
             }
@@ -163,7 +163,8 @@ public class SwitchFeignDecoderConfig {
                 // Default success determination
                 boolean success = false;
                 if (data.getEstado() != null
-                        && data.getEstado().matches("(?i)(COMPLETADA|EXITOSA|PROCESADA|SUCCESS|OK|COMPLETED)")) {
+                        && data.getEstado()
+                                .matches("(?i)(COMPLETADA|EXITOSA|PROCESADA|SUCCESS|OK|COMPLETED|QUEUED|ACCEPTED)")) {
                     success = true;
                 }
 
