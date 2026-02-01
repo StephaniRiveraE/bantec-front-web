@@ -7,32 +7,25 @@ import java.util.Map;
 import com.arcbank.cbs.transaccion.dto.TransaccionRequestDTO;
 import com.arcbank.cbs.transaccion.dto.TransaccionResponseDTO;
 import com.arcbank.cbs.transaccion.dto.RefoundRequestDTO;
-
-import com.arcbank.cbs.transaccion.dto.SwitchRefundRequest;
+import com.arcbank.cbs.transaccion.dto.AccountLookupResponse;
 
 public interface TransaccionService {
 
         TransaccionResponseDTO crearTransaccion(TransaccionRequestDTO request);
 
-        List<TransaccionResponseDTO> obtenerPorCuenta(Integer idCuenta);
+        TransaccionResponseDTO buscarPorId(Long id);
 
-        TransaccionResponseDTO obtenerPorId(Integer id);
+        TransaccionResponseDTO buscarPorReferencia(String referencia);
 
-        void procesarTransferenciaEntrante(String instructionId, String cuentaDestino,
-                        BigDecimal monto, String bancoOrigen);
+        List<TransaccionResponseDTO> obtenerUltimosMovimientos(Integer cuentaId);
 
-        void procesarDevolucionEntrante(SwitchRefundRequest request);
-
-        void solicitarReverso(RefoundRequestDTO request);
-
-        List<Map<String, String>> obtenerMotivosDevolucion();
+        TransaccionResponseDTO solicitarDevolucion(RefoundRequestDTO request);
 
         String consultarEstadoTransferencia(String instructionId);
 
-        com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaExterna(String targetBankId,
-                        String targetAccountNumber);
+        AccountLookupResponse validarCuentaExterna(String bankBic, String accountId);
 
-        com.arcbank.cbs.transaccion.dto.AccountLookupResponse validarCuentaLocal(String numeroCuenta);
+        AccountLookupResponse validarCuentaLocal(String accountId);
 
-        TransaccionResponseDTO buscarPorReferencia(String referencia);
+        void procesarDeposito(String cuentaDestino, BigDecimal monto, String ordenante, String instructionId);
 }

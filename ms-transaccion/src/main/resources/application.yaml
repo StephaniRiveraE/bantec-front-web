@@ -16,6 +16,25 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  rabbitmq:
+    host: b-455e546c-be71-4fe2-ba0f-bd3112e6c220.mq.us-east-2.on.aws
+    port: 5671
+    username: ${RABBITMQ_USER:bantec}
+    password: ${RABBITMQ_PASSWORD:bantecpass}
+    virtual-host: /
+    ssl:
+      enabled: true
+      algorithm: TLSv1.2
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 4
+          initial-interval: 800ms
+          multiplier: 2.5
+          max-interval: 5000ms
 
 server:
   port: ${SERVER_PORT:8080}
@@ -37,12 +56,13 @@ app:
     truststore:
       path: ${MTLS_TRUSTSTORE_PATH:classpath:certs/bantec-truststore.p12}
       password: ${MTLS_TRUSTSTORE_PASSWORD:bantec123}
+  rabbitmq:
+    queue: q.bank.BANTEC.in
 
 logging:
   level:
     com.arcbank.cbs.transaccion: DEBUG
     org.springframework.web: INFO
-    com.arcbank.cbs.transaccion.client: DEBUG
     com.arcbank.cbs.transaccion.client: DEBUG
 
 feign:
