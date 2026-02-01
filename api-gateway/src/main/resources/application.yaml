@@ -101,6 +101,12 @@ spring:
           predicates:
             - Path=/api/sucursales/**
 
+        # RUTA 10: SWITCH PROXY
+        - id: switch-proxy-service
+          uri: http://ms-transaccion:8080
+          predicates:
+            - Path=/api/v2/switch/**
+
 # Configuración de Swagger centralizado
 springdoc:
   swagger-ui:

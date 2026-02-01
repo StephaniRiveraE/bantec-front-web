@@ -445,20 +445,72 @@ public class TransaccionServiceImpl implements TransaccionService {
             throw new BusinessException("La referencia no puede estar vacía.");
         }
 
+        Transaccion t = null;
+
         // INTENTO 1: Si es un número, buscamos por ID Transacción primero
         if (referencia.matches("\\d+")) {
             try {
                 Integer id = Integer.parseInt(referencia);
-                return obtenerPorId(id);
-            } catch (BusinessException | NumberFormatException e) {
-                // Si no se encuentra por ID, seguimos para intentar por referencia (string)
+                // No retornamos inmediatamente, queremos validar el estado si es PENDIENTE
+                t = transaccionRepository.findById(id).orElse(null);
+            } catch (Exception e) {
                 log.info("No se encontró por ID {}, intentando por referencia string...", referencia);
             }
         }
 
-        // INTENTO 2: Buscar por UUID/Referencia String
-        Transaccion t = transaccionRepository.findByReferencia(referencia)
-                .orElseThrow(() -> new BusinessException("Transacción no encontrada con referencia/ID: " + referencia));
+        // INTENTO 2: Buscar por UUID/Referencia String si no se encontró por ID
+        if (t == null) {
+            t = transaccionRepository.findByReferencia(referencia)
+                    .orElseThrow(
+                            () -> new BusinessException("Transacción no encontrada con referencia/ID: " + referencia));
+        }
+
+        // LÓGICA DE RECUPERACIÓN DE ESTADO (SYNC CON SWITCH)
+        if ("PENDIENTE".equalsIgnoreCase(t.getEstado()) || "EN_PROCESO".equalsIgnoreCase(t.getEstado())) {
+            log.info("🔄 Tx {} está PENDIENTE. Consultando estado al Switch...", t.getReferencia());
+            try {
+                SwitchTransferResponse switchResp = switchClient.consultarEstadoTransferencia(t.getReferencia());
+
+                if (switchResp != null && switchResp.getData() != null) {
+                    String switchStatus = switchResp.getData().getEstado();
+                    log.info("📩 Estado recibido del Switch: {}", switchStatus);
+
+                    if ("COMPLETED".equalsIgnoreCase(switchStatus) || "EXITOSA".equalsIgnoreCase(switchStatus)) {
+                        t.setEstado("COMPLETADA");
+                        t.setDescripcion("Transferencia completada (Sincronizada)");
+                        t = transaccionRepository.save(t);
+                        log.info("✅ Tx {} actualizada a COMPLETADA tras sincronización.", t.getReferencia());
+
+                    } else if ("FAILED".equalsIgnoreCase(switchStatus) || "FALLIDA".equalsIgnoreCase(switchStatus)
+                            || "RECHAZADA".equalsIgnoreCase(switchStatus)) {
+
+                        String errorMsg = (switchResp.getError() != null) ? switchResp.getError().getMessage()
+                                : "Rechazo confirmado por Switch";
+                        log.warn("❌ Tx {} falló en Switch. Iniciando reverso local. Motivo: {}", t.getReferencia(),
+                                errorMsg);
+
+                        // REVERSO LOCAL
+                        if (t.getIdCuentaOrigen() != null && t.getMonto() != null) {
+                            try {
+                                BigDecimal saldoRevertido = procesarSaldo(t.getIdCuentaOrigen(), t.getMonto());
+                                t.setSaldoResultante(saldoRevertido);
+                                log.info("💰 Saldo revertido correctamente.");
+                            } catch (Exception e) {
+                                log.error("🚨 Error crítico al revertir saldo en sincronización: {}", e.getMessage());
+                            }
+                        }
+
+                        t.setEstado("FALLIDA");
+                        t.setDescripcion("RECHAZADA: " + errorMsg);
+                        t = transaccionRepository.save(t);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("⚠️ No se pudo sincronizar con Switch para Tx {}: {}", t.getReferencia(), e.getMessage());
+                // Si falla la conexión, mantenemos PENDIENTE
+            }
+        }
+
         return mapearADTO(t, null);
     }
 
