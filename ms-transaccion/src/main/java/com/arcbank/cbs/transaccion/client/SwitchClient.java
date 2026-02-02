@@ -40,6 +40,6 @@ public interface SwitchClient {
         com.arcbank.cbs.transaccion.dto.AccountLookupResponse lookupAccount(
                         @RequestBody com.arcbank.cbs.transaccion.dto.AccountLookupRequest request);
 
-        @PostMapping("/api/v1/transacciones/callback")
+        @PostMapping("/api/v2/switch/transfers/callback")
         Object enviarCallback(@RequestBody com.arcbank.cbs.transaccion.dto.StatusReportDTO callback);
 }
