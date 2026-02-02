@@ -21,7 +21,9 @@ public class RabbitMQConfig {
      */
     @Bean
     public Queue bantecQueue() {
-        return new Queue(queueName, true);
+        return org.springframework.amqp.core.QueueBuilder.durable(queueName)
+                .withArgument("x-message-ttl", 60000) // TTL de 60s requerido por el Switch
+                .build();
     }
 
     /**
