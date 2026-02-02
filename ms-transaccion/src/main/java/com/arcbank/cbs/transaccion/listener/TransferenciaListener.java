@@ -25,7 +25,7 @@ public class TransferenciaListener {
     @Value("${app.banco.codigo:BANTEC}")
     private String bancoCodigo;
 
-    @RabbitListener(queues = "${app.rabbitmq.queue:q.bank.BANTEC.in}")
+    @RabbitListener(queues = "${BANK_QUEUE_NAME:q.bank.BANTEC.in}")
     public void recibirTransferencia(MensajeISO mensaje) {
         String instructionId = mensaje.getBody().getInstructionId();
         log.info("Recibida transferencia: {} por ${}",

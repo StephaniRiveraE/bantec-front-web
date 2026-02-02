@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    @Value("${app.rabbitmq.queue:q.bank.BANTEC.in}")
+    @Value("${BANK_QUEUE_NAME:q.bank.BANTEC.in}")
     private String queueName;
 
     /**
