@@ -12,20 +12,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    @Value("${BANK_QUEUE_NAME:q.bank.BANTEC.in}")
-    private String queueName;
-
-    /**
-     * Define explícitamente la cola.
-     * durable = true (porque el Switch seguramente la creó así para persistencia)
-     */
-    @Bean
-    public Queue bantecQueue() {
-        return org.springframework.amqp.core.QueueBuilder.durable(queueName)
-                .withArgument("x-message-ttl", 60000) // TTL de 60s requerido por el Switch
-                .build();
-    }
-
     /**
      * Conversor para manejar JSON automáticamente.
      * Sin esto, Spring espera serialización Java nativa y falla con mensajes de
