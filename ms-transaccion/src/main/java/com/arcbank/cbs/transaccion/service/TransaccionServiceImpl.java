@@ -727,6 +727,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                     .idTransaccionReversa(originalTx.getIdTransaccion())
                     .idBancoExterno(bancoOrigenRef)
                     .fechaCreacion(fechaReverso)
+                    .codigoMotivo(request.getBody().getReturnReason())
                     .build();
 
             transaccionRepository.save(returnTx);
@@ -758,6 +759,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                         .idTransaccionReversa(originalTx.getIdTransaccion())
                         .idBancoExterno(bancoOrigenRef)
                         .fechaCreacion(fechaReverso)
+                        .codigoMotivo(request.getBody().getReturnReason())
                         .build();
 
                 transaccionRepository.save(debitTx);
@@ -887,6 +889,7 @@ public class TransaccionServiceImpl implements TransaccionService {
                         .saldoResultante(nuevoSaldo)
                         .estado("COMPLETADA")
                         .idTransaccionReversa(originalTx.getIdTransaccion())
+                        .codigoMotivo(motivoIso)
                         .build();
 
                 try {
@@ -914,10 +917,15 @@ public class TransaccionServiceImpl implements TransaccionService {
             return switchClient.obtenerMotivosDevolucion();
         } catch (Exception e) {
             return java.util.List.of(
-                    java.util.Map.of("codigo", "AC01", "descripcion", "Número de cuenta incorrecto"),
-                    java.util.Map.of("AC04", "AC04", "descripcion", "Cuenta cerrada"),
-                    java.util.Map.of("AM04", "AM04", "descripcion", "Fondos insuficientes"),
-                    java.util.Map.of("MS03", "MS03", "descripcion", "Error técnico (Otro)"));
+                    java.util.Map.of("codigo", "AC03", "descripcion", "Cuenta Inexistente (Invalid Creditor Account)"),
+                    java.util.Map.of("codigo", "AC06", "descripcion", "Cuenta Bloqueada (Blocked Account)"),
+                    java.util.Map.of("codigo", "AC04", "descripcion", "Cuenta Cerrada (Closed Account)"),
+                    java.util.Map.of("codigo", "AM05", "descripcion", "Duplicidad (Duplication)"),
+                    java.util.Map.of("codigo", "FRAD", "descripcion", "Fraude (Fraudulent Origin)"),
+                    java.util.Map.of("codigo", "MS03", "descripcion", "Error Técnico (Not Specified Reason Agent)"),
+                    java.util.Map.of("codigo", "AG01", "descripcion", "Operación Prohibida (Transaction Forbidden)"),
+                    java.util.Map.of("codigo", "CUST", "descripcion",
+                            "Solicitado por Cliente (Requested By Customer)"));
         }
     }
 
@@ -929,11 +937,23 @@ public class TransaccionServiceImpl implements TransaccionService {
             case "TECH":
                 return "MS03";
             case "CUENTA_INVALIDA":
+            case "CUENTA_INEXISTENTE":
                 return "AC03";
+            case "CUENTA_BLOQUEADA":
+                return "AC06";
+            case "CUENTA_CERRADA":
+                return "AC04";
             case "SALDO_INSUFICIENTE":
-                return "AM04";
+                return "AM04"; // Mantenemos AM04 por compatibilidad interna, aunque no sea ISO switch return
             case "DUPLICADO":
-                return "MD01";
+                return "AM05";
+            case "FRAUDE":
+                return "FRAD";
+            case "CLIENTE":
+            case "SOLICITUD_CLIENTE":
+                return "CUST";
+            case "PROHIBIDO":
+                return "AG01";
             default:
                 return "MS03";
         }
