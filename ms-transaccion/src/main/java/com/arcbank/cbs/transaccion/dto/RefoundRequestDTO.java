@@ -13,8 +13,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class RefoundRequestDTO {
 
-    @NotNull
     private Integer idTransaccion;
+
+    private String codigoReferencia;
 
     @NotBlank
     private String motivo;

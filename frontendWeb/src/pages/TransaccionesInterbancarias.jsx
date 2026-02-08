@@ -24,6 +24,7 @@ export default function TransaccionesInterbancarias() {
     const [loading, setLoading] = useState(false);
     const [loadingBanks, setLoadingBanks] = useState(false);
     const [validationMsg, setValidationMsg] = useState("");
+    const [finalRefCode, setFinalRefCode] = useState(null); // Reference Code from Switch
 
     // Carga de bancos dinámica desde el Switch vía Backend BANTEC
     useEffect(() => {
@@ -211,8 +212,10 @@ export default function TransaccionesInterbancarias() {
 
                 try {
                     const pollRes = await getTransferStatus(txIdInstruccion);
-                    const { estado, codigo, mensaje } = pollRes;
+                    const { estado, codigo, mensaje, codigoReferencia } = pollRes;
                     console.log(`Polling ${attempts + 1}/30: Estado=${estado}, Codigo=${codigo}`);
+
+                    if (codigoReferencia) setFinalRefCode(codigoReferencia);
 
                     if (estado === 'COMPLETED') {
                         finalState = 'COMPLETED';
@@ -283,7 +286,9 @@ export default function TransaccionesInterbancarias() {
 
     const downloadReceipt = () => {
         const total = Number(amount);
+        const refCode = finalRefCode || "N/A";
         const text = `TRANSFERENCIA INTERBANCARIA BANTEC\n\n` +
+            `Código de Referencia: ${refCode}\n` +
             `Monto Transferido: $${Number(amount).toFixed(2)}\n` +
             `Total Debitado: $${total.toFixed(2)}\n\n` +
             `Desde cuenta: ${fromAccount.number}\n` +
@@ -527,9 +532,29 @@ export default function TransaccionesInterbancarias() {
                                 <>
                                     <div className="success-icon"><FiCheck /></div>
                                     <h2 className="success-title">¡Transferencia Exitosa!</h2>
-                                    <p style={{ color: 'var(--text-muted)', marginBottom: 30 }}>
+                                    <p style={{ color: 'var(--text-muted)', marginBottom: 10 }}>
                                         Su dinero ha sido transferido correctamente a {toName}.
                                     </p>
+
+                                    {finalRefCode && (
+                                        <div style={{
+                                            background: 'rgba(255, 215, 0, 0.1)',
+                                            border: '1px solid var(--accent-gold)',
+                                            padding: '15px',
+                                            margin: '20px auto',
+                                            maxWidth: '350px',
+                                            borderRadius: '8px'
+                                        }}>
+                                            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>Código de Referencia</p>
+                                            <p style={{ margin: '5px 0 0', fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-gold)', letterSpacing: '2px' }}>
+                                                {finalRefCode}
+                                            </p>
+                                            <p style={{ margin: '5px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                Guarde este código para consultas o reclamos.
+                                            </p>
+                                        </div>
+                                    )}
+
                                     <div className="transfer-button-row">
                                         <button className="btn-back" onClick={() => navigate('/movimientos')}>Ir al Inicio</button>
                                         <button className="btn btn-transfer" style={{ background: 'var(--grad-gold)', color: '#000' }} onClick={downloadReceipt}>

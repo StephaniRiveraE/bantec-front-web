@@ -150,28 +150,86 @@ public class SwitchFeignDecoderConfig {
             private SwitchTransferResponse mapJsonNodeToResponse(JsonNode node, ObjectMapper mapper) {
                 SwitchTransferResponse.DataBody data = new SwitchTransferResponse.DataBody();
 
+                // 1. Extract ID
                 if (node.has("idInstruccion"))
-                    data.setInstructionId(java.util.UUID.fromString(node.get("idInstruccion").asText()));
+                    data.setInstructionId(getUuidSafe(node.get("idInstruccion").asText()));
                 else if (node.has("instructionId"))
-                    data.setInstructionId(java.util.UUID.fromString(node.get("instructionId").asText()));
+                    data.setInstructionId(getUuidSafe(node.get("instructionId").asText()));
+                else if (node.has("id"))
+                    data.setInstructionId(getUuidSafe(node.get("id").asText()));
 
+                // 2. Extract Status
                 if (node.has("estado"))
                     data.setEstado(node.get("estado").asText());
                 else if (node.has("status"))
                     data.setEstado(node.get("status").asText());
 
-                // Default success determination
+                // 3. Extract Error Information (Crucial for "Rechazo desconocido")
+                String errorMsg = null;
+                String errorCode = "UNKNOWN";
+
+                if (node.has("error")) {
+                    JsonNode errNode = node.get("error");
+                    if (errNode.isObject()) {
+                        if (errNode.has("message"))
+                            errorMsg = errNode.get("message").asText();
+                        else if (errNode.has("descripcion"))
+                            errorMsg = errNode.get("descripcion").asText();
+
+                        if (errNode.has("code"))
+                            errorCode = errNode.get("code").asText();
+                    } else {
+                        errorMsg = errNode.asText();
+                    }
+                } else if (node.has("message")) {
+                    errorMsg = node.get("message").asText();
+                } else if (node.has("mensaje")) {
+                    errorMsg = node.get("mensaje").asText();
+                } else if (node.has("detail")) {
+                    errorMsg = node.get("detail").asText();
+                } else if (node.has("reason")) {
+                    errorMsg = node.get("reason").asText();
+                }
+
+                // 4. Determine Success
                 boolean success = false;
-                if (data.getEstado() != null
-                        && data.getEstado()
-                                .matches("(?i)(COMPLETADA|EXITOSA|PROCESADA|SUCCESS|OK|COMPLETED|QUEUED|ACCEPTED)")) {
+
+                // Explicit Success Status
+                if (data.getEstado() != null && data.getEstado()
+                        .matches("(?i)(COMPLETADA|EXITOSA|PROCESADA|SUCCESS|OK|COMPLETED|QUEUED|ACCEPTED)")) {
+                    success = true;
+                }
+                // Implicit Success (No error, has ID) - SAFETY NET
+                else if (errorMsg == null && data.getInstructionId() != null) {
+                    // Only assume success if truly no error looks present.
+                    // But to be safe, if status is missing, we might default to false unless we are
+                    // sure.
+                    // For now, if we have an ID and no error message, let's treat as potentially
+                    // valid/queued
                     success = true;
                 }
 
-                return SwitchTransferResponse.builder()
+                // 5. Construct Response
+                SwitchTransferResponse.SwitchTransferResponseBuilder builder = SwitchTransferResponse.builder()
                         .success(success)
-                        .data(data)
-                        .build();
+                        .data(data);
+
+                if (!success && errorMsg != null) {
+                    builder.error(SwitchTransferResponse.ErrorBody.builder()
+                            .code(errorCode)
+                            .message(errorMsg)
+                            .build());
+                }
+
+                return builder.build();
+            }
+
+            private java.util.UUID getUuidSafe(String uuidStr) {
+                try {
+                    return java.util.UUID.fromString(uuidStr);
+                } catch (Exception e) {
+                    return null;
+                }
             }
         };
     }

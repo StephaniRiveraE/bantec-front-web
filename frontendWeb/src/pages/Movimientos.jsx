@@ -53,10 +53,11 @@ export default function Movimientos() {
         const isPending = (m.estado === 'PENDIENTE') || desc.includes("validación") || desc.includes("proceso");
 
         // Prioridad de búsqueda de referencia para el Switch
-        const refSwitch = m.referencia || m.ref || m.transactionId || m.referenciaRed || m.externalId;
+        const refSwitch = m.codigoReferencia || m.referencia || m.ref || m.transactionId || m.referenciaRed || m.externalId;
 
         return {
           id: m.idTransaccion || `mv-${i}`,
+          codigoReferencia: m.codigoReferencia,
           referencia: refSwitch,
           fecha: fechaStr,
           desc: desc,
@@ -149,6 +150,33 @@ export default function Movimientos() {
     }
   }
 
+  // --- Solicitar Devolución ---
+  const handleRefund = async (tx) => {
+    const ref = tx.codigoReferencia || tx.referencia;
+    if (!ref) return alert("No se puede solicitar devolución sin referencia.");
+
+    const reason = prompt("Ingrese el motivo de la devolución (Código ISO o descripción breve):", "AC01");
+    if (!reason) return;
+
+    if (!window.confirm(`¿Solicitar devolución de la transacción ${ref} por motivo: ${reason}?`)) return;
+
+    setLoading(true);
+    try {
+      const { solicitarReverso } = await import('../services/bancaApi');
+      await solicitarReverso({
+        idTransaccion: tx.id,
+        motivo: reason
+      });
+      alert("Solicitud de devolución enviada con éxito.");
+      loadMovements();
+    } catch (e) {
+      console.error(e);
+      alert("Error solicitando devolución: " + (e.message || "Error desconocido"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const cuentaActual = state.user.accounts?.find(a => a.id == selectedAccId)
 
   // Helper moved to scope
@@ -234,7 +262,9 @@ export default function Movimientos() {
                         <td className="mov-date">{tx.fecha}</td>
                         <td className="mov-desc">
                           <div style={{ fontWeight: 500, color: '#e0e0e0' }}>{getFriendlyDesc(tx)}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#888', marginTop: 3 }}>ID: {tx.id}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#888', marginTop: 3 }}>
+                            {tx.codigoReferencia ? <span style={{ color: 'var(--accent-gold)', fontWeight: 'bold' }}>REF: {tx.codigoReferencia}</span> : `ID: ${tx.id}`}
+                          </div>
                           {tx.isPending && <div style={{ fontSize: '0.75rem', color: 'orange', marginTop: 4 }}><FiAlertTriangle /> En proceso</div>}
                         </td>
                         <td>
@@ -249,7 +279,7 @@ export default function Movimientos() {
                           ${Number(tx.saldoResultante || 0).toFixed(2)}
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          {tx.isPending && (
+                          {tx.isPending ? (
                             <button
                               className="btn-verify-sm"
                               onClick={() => handleCheckStatus(tx)}
@@ -258,6 +288,18 @@ export default function Movimientos() {
                             >
                               Estado
                             </button>
+                          ) : (
+                            // Mostrar botón devolución si es débito y completada (simple lógica)
+                            (tx.isDebit && tx.estado === 'COMPLETADA') && (
+                              <button
+                                className="btn-verify-sm"
+                                onClick={() => handleRefund(tx)}
+                                title="Solicitar Devolución"
+                                style={{ width: 'auto', padding: '4px 12px', fontWeight: 'bold', background: '#ffebee', color: '#c62828', borderColor: '#ef9a9a' }}
+                              >
+                                Devolver
+                              </button>
+                            )
                           )}
                         </td>
                       </tr>

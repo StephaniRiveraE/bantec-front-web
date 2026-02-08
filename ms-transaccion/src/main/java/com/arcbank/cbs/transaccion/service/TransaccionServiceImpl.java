@@ -189,6 +189,10 @@ public class TransaccionServiceImpl implements TransaccionService {
 
                         SwitchTransferResponse switchResp = switchClient.enviarTransferencia(switchRequest);
 
+                        if (switchResp.getData() != null && switchResp.getData().getCodigoReferencia() != null) {
+                            trx.setCodigoReferencia(switchResp.getData().getCodigoReferencia());
+                        }
+
                         if (switchResp == null || !switchResp.isSuccess()) {
                             BigDecimal saldoRevertido = procesarSaldo(trx.getIdCuentaOrigen(), montoTotal);
 
@@ -239,7 +243,9 @@ public class TransaccionServiceImpl implements TransaccionService {
                                     ultimoEstado = statusResp.getData().getEstado();
 
                                     if ("COMPLETED".equalsIgnoreCase(ultimoEstado)
-                                            || "EXITOSA".equalsIgnoreCase(ultimoEstado)) {
+                                            || "EXITOSA".equalsIgnoreCase(ultimoEstado)
+                                            || "QUEUED".equalsIgnoreCase(ultimoEstado)
+                                            || "ACCEPTED".equalsIgnoreCase(ultimoEstado)) {
                                         confirmado = true;
                                         break;
                                     }
@@ -391,7 +397,14 @@ public class TransaccionServiceImpl implements TransaccionService {
 
         Transaccion t = null;
 
-        if (referencia.matches("\\d+")) {
+        // Prioridad 1: Buscar por Código de Referencia (6 dígitos)
+        if (referencia.matches("^[0-9]{6}$")) {
+            t = transaccionRepository.findByCodigoReferencia(referencia).orElse(null);
+        }
+
+        // Prioridad 2: Buscar por ID interno (numérico, pero verifiquemos que no sea un
+        // codigoReferencia coincidente)
+        if (t == null && referencia.matches("\\d+") && !referencia.matches("^[0-9]{6}$")) {
             try {
                 Integer id = Integer.parseInt(referencia);
                 t = transaccionRepository.findById(id).orElse(null);
@@ -399,6 +412,17 @@ public class TransaccionServiceImpl implements TransaccionService {
             }
         }
 
+        // Fallback: Si es numérico y no se encontró como CodigoReferencia, intentar
+        // como ID
+        if (t == null && referencia.matches("\\d+")) {
+            try {
+                Integer id = Integer.parseInt(referencia);
+                t = transaccionRepository.findById(id).orElse(null);
+            } catch (Exception e) {
+            }
+        }
+
+        // Prioridad 3: Buscar por UUID/Referencia larga
         if (t == null) {
             t = transaccionRepository.findByReferencia(referencia)
                     .orElseThrow(
@@ -410,10 +434,17 @@ public class TransaccionServiceImpl implements TransaccionService {
                 SwitchTransferResponse switchResp = switchClient.consultarEstadoTransferencia(t.getReferencia());
 
                 if (switchResp != null && switchResp.getData() != null) {
+
+                    // Actualizar Codigo Referencia si llega en la consulta
+                    if (t.getCodigoReferencia() == null && switchResp.getData().getCodigoReferencia() != null) {
+                        t.setCodigoReferencia(switchResp.getData().getCodigoReferencia());
+                    }
+
                     String switchStatus = switchResp.getData().getEstado();
                     log.info("Respuesta del Switch para {}: {}", t.getReferencia(), switchStatus);
 
-                    if ("COMPLETED".equalsIgnoreCase(switchStatus) || "EXITOSA".equalsIgnoreCase(switchStatus)) {
+                    if ("COMPLETED".equalsIgnoreCase(switchStatus) || "EXITOSA".equalsIgnoreCase(switchStatus)
+                            || "QUEUED".equalsIgnoreCase(switchStatus) || "ACCEPTED".equalsIgnoreCase(switchStatus)) {
                         t.setEstado("COMPLETADA");
                         t.setDescripcion("Transferencia completada (Sincronizada)");
                         t = transaccionRepository.save(t);
@@ -509,6 +540,7 @@ public class TransaccionServiceImpl implements TransaccionService {
         return TransaccionResponseDTO.builder()
                 .idTransaccion(t.getIdTransaccion())
                 .referencia(t.getReferencia())
+                .codigoReferencia(t.getCodigoReferencia())
                 .tipoOperacion(t.getTipoOperacion())
                 .idCuentaOrigen(t.getIdCuentaOrigen())
                 .idCuentaDestino(t.getIdCuentaDestino())
@@ -743,8 +775,23 @@ public class TransaccionServiceImpl implements TransaccionService {
     @Transactional
     public void solicitarReverso(RefoundRequestDTO requestDTO) {
 
-        Transaccion originalTx = transaccionRepository.findById(requestDTO.getIdTransaccion())
-                .orElseThrow(() -> new BusinessException("Transacción no encontrada"));
+        Transaccion originalTx = null;
+
+        if (requestDTO.getIdTransaccion() != null) {
+            originalTx = transaccionRepository.findById(requestDTO.getIdTransaccion())
+                    .orElse(null);
+        }
+
+        if (originalTx == null && requestDTO.getCodigoReferencia() != null) {
+            originalTx = transaccionRepository
+                    .findByCodigoReferencia(requestDTO.getCodigoReferencia())
+                    .orElse(null);
+        }
+
+        if (originalTx == null) {
+            throw new BusinessException(
+                    "Transacción no encontrada. Debe proporcionar un ID válido o un Código de Referencia.");
+        }
 
         if ("PENDIENTE".equals(originalTx.getEstado()) || "EN_PROCESO".equals(originalTx.getEstado())) {
             try {

@@ -143,7 +143,7 @@ export default function GestionDevoluciones() {
                             <input
                                 type="text"
                                 className="dev-input"
-                                placeholder="Ej: abc123-def456..."
+                                placeholder="Ej: 847293 o UUID..."
                                 value={referencia}
                                 onChange={(e) => setReferencia(e.target.value)}
                                 disabled={loading}
@@ -213,6 +213,12 @@ export default function GestionDevoluciones() {
                                     <span className="dev-label">ID</span>
                                     <span className="dev-value">{transaccion.idTransaccion}</span>
                                 </div>
+                                {transaccion.codigoReferencia && (
+                                    <div className="dev-detail-item">
+                                        <span className="dev-label">Código Ref.</span>
+                                        <span className="dev-value dev-highlight">{transaccion.codigoReferencia}</span>
+                                    </div>
+                                )}
                                 <div className="dev-detail-item">
                                     <span className="dev-label">Referencia</span>
                                     <span className="dev-value">{transaccion.referencia}</span>

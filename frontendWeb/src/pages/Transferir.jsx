@@ -25,6 +25,7 @@ export default function Transfer() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [validationMsg, setValidationMsg] = useState("");
+    const [lastTxResponse, setLastTxResponse] = useState(null); // ValidacionCodigo: Estado para guardar respuesta
 
     useEffect(() => {
         if (accounts.length > 0 && !fromAccId) setFromAccId(accounts[0].id);
@@ -115,6 +116,7 @@ export default function Transfer() {
         if (!fromAccId) return setError('Datos de cuenta inválidos.');
         setLoading(true);
         try {
+            let responseTx = null;
             if (selectedBank === "BANTEC" || selectedBank === "ARCBANK") {
                 // INTERNAL
                 const request = {
@@ -128,7 +130,7 @@ export default function Transfer() {
                 }
                 if (!request.idCuentaDestino) throw new Error("Error interno: ID Cuenta Destino faltante.");
 
-                await realizarTransferencia(request);
+                responseTx = await realizarTransferencia(request);
 
                 // Add to local context history
                 addTransaction({
@@ -150,7 +152,7 @@ export default function Transfer() {
                     beneficiario: toName,
                     idSucursal: 1
                 };
-                await realizarTransferenciaInterbancaria(request);
+                responseTx = await realizarTransferenciaInterbancaria(request);
 
                 addTransaction({
                     accId: fromAccId,
@@ -159,6 +161,10 @@ export default function Transfer() {
                     desc: `Transferencia a ${toName} (${selectedBank})`,
                     fecha: new Date().toISOString()
                 });
+            }
+
+            if (responseTx) {
+                setLastTxResponse(responseTx);
             }
 
             setStep(4);
@@ -170,7 +176,8 @@ export default function Transfer() {
     };
 
     const downloadReceipt = () => {
-        const text = `TRANSFERENCIA EXITOSA\n\nMonto: $${Number(amount).toFixed(2)}\nOrigen: ${fromAccount.number}\nBanco Destino: ${selectedBank}\nCuenta Destino: ${toAccountNum}\nBeneficiario: ${toName}\nFecha: ${new Date().toLocaleString()}\n`;
+        const refCode = lastTxResponse?.codigoReferencia || "N/A";
+        const text = `TRANSFERENCIA EXITOSA\n\nCódigo de Referencia: ${refCode}\nMonto: $${Number(amount).toFixed(2)}\nOrigen: ${fromAccount.number}\nBanco Destino: ${selectedBank}\nCuenta Destino: ${toAccountNum}\nBeneficiario: ${toName}\nFecha: ${new Date().toLocaleString()}\n`;
         const blob = new Blob([text], { type: "text/plain" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -329,7 +336,27 @@ export default function Transfer() {
                         <div className="step-content success-state" style={{ textAlign: 'center' }}>
                             <div className="success-icon"><FiCheck /></div>
                             <h2 className="success-title">Envío Exitoso</h2>
-                            <p style={{ color: 'var(--text-muted)', marginBottom: 30 }}>Tu transferencia se ha procesado con éxito.</p>
+                            <p style={{ color: 'var(--text-muted)', marginBottom: 10 }}>Tu transferencia se ha procesado con éxito.</p>
+
+                            {lastTxResponse && lastTxResponse.codigoReferencia && (
+                                <div style={{
+                                    background: 'rgba(255, 215, 0, 0.1)',
+                                    border: '1px solid var(--primary)',
+                                    padding: '15px',
+                                    margin: '20px auto',
+                                    maxWidth: '350px',
+                                    borderRadius: '8px'
+                                }}>
+                                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>Código de Referencia</p>
+                                    <p style={{ margin: '5px 0 0', fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)', letterSpacing: '2px' }}>
+                                        {lastTxResponse.codigoReferencia}
+                                    </p>
+                                    <p style={{ margin: '5px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        Guarde este código para consultas o reclamos.
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="transfer-button-row">
                                 <button className="btn-back" onClick={() => navigate('/movimientos')}>Ir a Inicio</button>
                                 <button className="btn btn-transfer" style={{ background: 'var(--grad-gold)', color: '#000' }} onClick={downloadReceipt}>

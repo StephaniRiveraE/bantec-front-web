@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 public class TransaccionResponseDTO {
     private Integer idTransaccion;
     private String referencia;
+    private String codigoReferencia;
     private String tipoOperacion;
 
     private Integer idCuentaOrigen;

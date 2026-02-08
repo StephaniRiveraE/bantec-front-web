@@ -21,6 +21,7 @@ public class SwitchTransferResponse {
     @AllArgsConstructor
     public static class DataBody {
         private UUID instructionId;
+        private String codigoReferencia;
         private String estado;
         private String bancoOrigen;
         private String bancoDestino;

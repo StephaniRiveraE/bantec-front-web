@@ -149,7 +149,8 @@ export async function getTransferStatus(instructionId) {
     return {
       estado: finalState,
       codigo: finalState === 'FAILED' ? 'ERR' : 'OK',
-      mensaje: tx.mensajeUsuario || tx.descripcion || ""
+      mensaje: tx.mensajeUsuario || tx.descripcion || "",
+      codigoReferencia: tx.codigoReferencia
     };
   } catch (e) {
     // Si no encuentra la transacción o falla, retornamos PENDING para que siga intentando

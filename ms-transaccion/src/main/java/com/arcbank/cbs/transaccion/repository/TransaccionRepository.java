@@ -21,4 +21,6 @@ public interface TransaccionRepository extends JpaRepository<Transaccion, Intege
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM Transaccion t WHERE t.referencia = :referencia")
     Optional<Transaccion> findPorReferenciaForUpdate(@Param("referencia") String referencia);
+
+    Optional<Transaccion> findByCodigoReferencia(String codigoReferencia);
 }

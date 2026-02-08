@@ -31,6 +31,9 @@ public class Transaccion {
     @Column(name = "\"Referencia\"", unique = true, length = 50)
     private String referencia;
 
+    @Column(name = "codigo_referencia", length = 6)
+    private String codigoReferencia;
+
     @Column(name = "\"IdTransaccionReversa\"")
     private Integer idTransaccionReversa;
 
