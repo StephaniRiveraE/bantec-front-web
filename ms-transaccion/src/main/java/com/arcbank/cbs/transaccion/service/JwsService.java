@@ -20,10 +20,10 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class JwsService {
 
-    @Value("classpath:certs/private_key.pem")
+    @Value("classpath:certs/jws_private.pem")
     private Resource privateKeyResource;
 
-    @Value("classpath:certs/public_key.pem")
+    @Value("classpath:certs/switch_public_key.pem")
     private Resource publicKeyResource;
 
     private PrivateKey privateKey;

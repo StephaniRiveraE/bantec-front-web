@@ -59,6 +59,23 @@ public class SwitchFeignDecoderConfig {
                             .build();
                 }
 
+                // 0. Validate JWS Signature
+                if (response.headers().containsKey("X-JWS-Signature")) {
+                    String signature = response.headers().get("X-JWS-Signature").stream().findFirst().orElse(null);
+                    if (signature != null && response.body() != null) {
+                        // Note: To verify detailed JWS, we might need the full JWS string
+                        // (header.payload.signature)
+                        // OR if the Switch sends Detached JWS (signature in header, payload in body).
+                        // Current JwsService implementation assumes standard compact JWS.
+                        // If Switch sends Detached, we need to reconstruct:
+                        // String jwsToVerify = <Base64Header> + "." + <Base64Payload> + "." +
+                        // signature;
+                        // For now, let's log the presence. Implementation detail depends on strict
+                        // Switch spec.
+                        log.info("🔐 Response contains JWS Signature: {}", signature);
+                    }
+                }
+
                 String body = Util.toString(response.body().asReader(java.nio.charset.StandardCharsets.UTF_8));
                 log.info("📥 Switch raw response - Status: {}, Body: {}", response.status(), body);
 
