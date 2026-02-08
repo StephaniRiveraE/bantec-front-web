@@ -1,6 +1,6 @@
 // API Gateway via nginx proxy (rutas relativas)
 // nginx hace proxy de /api/* hacia api-gateway:8080
-const BASE_URL = "";
+const BASE_URL = import.meta.env.VITE_API_URL || "";
 
 const ISO_ERROR_MAP = {
   "AC00": "¡Transferencia exitosa!",

@@ -37,73 +37,73 @@ spring:
       routes:
         # RUTA 1: CLIENTES
         - id: clientes-service
-          uri: http://micro-clientes:8080
+          uri: ${CLIENTES_SERVICE_URL:http://micro-clientes:8080}
           predicates:
             - Path=/api/v1/clientes/**
 
         # RUTA 2: PERSONAS
         - id: personas-service
-          uri: http://micro-clientes:8080
+          uri: ${CLIENTES_SERVICE_URL:http://micro-clientes:8080}
           predicates:
             - Path=/api/v1/personas/**
 
         # RUTA 3: EMPRESAS
         - id: empresas-service
-          uri: http://micro-clientes:8080
+          uri: ${CLIENTES_SERVICE_URL:http://micro-clientes:8080}
           predicates:
             - Path=/api/v1/empresas/**
 
         # RUTA 4: CUENTAS AHORROS
         - id: cuentas-ahorros-service
-          uri: http://micro-cuentas:8081
+          uri: ${CUENTAS_SERVICE_URL:http://micro-cuentas:8081}
           predicates:
             - Path=/api/v1/cuentas/ahorros/**
 
         # RUTA 5: TASAS DE INTERÉS
         - id: tasas-service
-          uri: http://micro-cuentas:8081
+          uri: ${CUENTAS_SERVICE_URL:http://micro-cuentas:8081}
           predicates:
             - Path=/api/v1/cuentas/tasas/**
 
         # RUTA 6: TIPOS DE CUENTA
         - id: tipos-cuenta-service
-          uri: http://micro-cuentas:8081
+          uri: ${CUENTAS_SERVICE_URL:http://micro-cuentas:8081}
           predicates:
             - Path=/api/v1/cuentas/tipos-cuenta/**
 
         # RUTA 7: TRANSACCIONES
         - id: transacciones-service
-          uri: http://ms-transaccion:8080
+          uri: ${TRANSACCIONES_SERVICE_URL:http://ms-transaccion:8080}
           predicates:
             - Path=/api/transacciones/**
 
         # RUTA 7.1: WEBHOOKS INCOMING
         - id: transacciones-incoming-service
-          uri: http://ms-transaccion:8080
+          uri: ${TRANSACCIONES_SERVICE_URL:http://ms-transaccion:8080}
           predicates:
             - Path=/api/incoming/**
 
         # RUTA 7.2: WEBHOOKS CORE
         - id: transacciones-core-service
-          uri: http://ms-transaccion:8080
+          uri: ${TRANSACCIONES_SERVICE_URL:http://ms-transaccion:8080}
           predicates:
             - Path=/api/core/**
 
         # RUTA 8: BANCOS
         - id: bancos-service
-          uri: http://ms-transaccion:8080
+          uri: ${TRANSACCIONES_SERVICE_URL:http://ms-transaccion:8080}
           predicates:
             - Path=/api/bancos/**
 
         # RUTA 9: SUCURSALES
         - id: sucursales-service
-          uri: http://micro-sucursales:8080
+          uri: ${SUCURSALES_SERVICE_URL:http://micro-sucursales:8080}
           predicates:
             - Path=/api/sucursales/**
 
         # RUTA 10: SWITCH PROXY
         - id: switch-proxy-service
-          uri: http://ms-transaccion:8080
+          uri: ${TRANSACCIONES_SERVICE_URL:http://ms-transaccion:8080}
           predicates:
             - Path=/api/v2/switch/**
 

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
 // URL Base del Gateway - vacío para usar rutas relativas (nginx hace proxy a api-gateway)
-export const API_BASE = ''
+export const API_BASE = process.env.REACT_APP_API_URL || ''
 
 export async function apiFetch(path, options = {}) {
   const base = API_BASE

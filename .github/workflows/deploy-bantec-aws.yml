@@ -1,0 +1,68 @@
+name: "Deploy BANTEC to AWS EKS"
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-2
+  EKS_CLUSTER: eks-banca-ecosistema
+  NAMESPACE: bantec
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: gateway-server
+            folder: api-gateway
+            ecr_repo: bantec-gateway-server
+          - name: service-clientes
+            folder: micro-clientes
+            ecr_repo: bantec-service-clientes
+          - name: service-cuentas
+            folder: micro-cuentas
+            ecr_repo: bantec-service-cuentas
+          - name: service-transacciones
+            folder: ms-transaccion
+            ecr_repo: bantec-service-transacciones
+          - name: service-sucursales
+            folder: sucursales
+            ecr_repo: bantec-service-sucursales
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configurar AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login a ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Build y Push imagen (${{ matrix.service.name }})
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd ${{ matrix.service.folder }}
+          docker build -t $ECR_REGISTRY/${{ matrix.service.ecr_repo }}:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/${{ matrix.service.ecr_repo }}:$IMAGE_TAG
+          echo "IMAGE=$ECR_REGISTRY/${{ matrix.service.ecr_repo }}:$IMAGE_TAG" >> $GITHUB_ENV
+      
+      - name: Configurar kubectl
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+      
+      - name: Desplegar a EKS (${{ matrix.service.name }})
+        run: |
+          kubectl set image deployment/${{ matrix.service.name }} \
+            ${{ matrix.service.name }}=${{ env.IMAGE }} \
+            -n ${{ env.NAMESPACE }}
+          kubectl rollout status deployment/${{ matrix.service.name }} \
+            -n ${{ env.NAMESPACE }} --timeout=300s

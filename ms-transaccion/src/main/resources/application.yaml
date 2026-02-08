@@ -2,9 +2,9 @@ spring:
   application:
     name: ms-transaccion
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/db_transacciones}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASS:admin}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db-transacciones:5432/db_transacciones}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -17,9 +17,9 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
   rabbitmq:
-    host: b-455e546c-be71-4fe2-ba0f-bd3112e6c220.mq.us-east-2.on.aws
+    host: ${RABBITMQ_HOST:b-455e546c-be71-4fe2-ba0f-bd3112e6c220.mq.us-east-2.on.aws}
     port: 5671
-    username: ${RABBITMQ_USER:bantec}
+    username: ${RABBITMQ_USERNAME:bantec}
     password: ${RABBITMQ_PASSWORD:bantecpass}
     virtual-host: /
     ssl:

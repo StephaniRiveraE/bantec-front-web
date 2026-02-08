@@ -850,11 +850,10 @@ public class TransaccionServiceImpl implements TransaccionService {
                 .build();
 
         SwitchTransferResponse response = null;
+        String motivoIso = mapearCodigoErrorInternalToISO(requestDTO.getMotivo());
 
         try {
-            String motivoIso = mapearCodigoErrorInternalToISO(requestDTO.getMotivo());
             switchRequest.getBody().setReturnReason(motivoIso);
-
             response = switchClient.solicitarDevolucion(switchRequest);
 
         } catch (Exception e) {
