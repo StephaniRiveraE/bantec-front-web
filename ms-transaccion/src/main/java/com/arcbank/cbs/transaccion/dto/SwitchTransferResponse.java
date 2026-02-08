@@ -1,5 +1,6 @@
 package com.arcbank.cbs.transaccion.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -21,7 +22,10 @@ public class SwitchTransferResponse {
     @AllArgsConstructor
     public static class DataBody {
         private UUID instructionId;
+
+        @JsonProperty("codigo_referencia")
         private String codigoReferencia;
+
         private String estado;
         private String bancoOrigen;
         private String bancoDestino;

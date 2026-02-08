@@ -164,6 +164,12 @@ public class SwitchFeignDecoderConfig {
                 else if (node.has("status"))
                     data.setEstado(node.get("status").asText());
 
+                // 2.1 Extract Reference Code
+                if (node.has("codigo_referencia"))
+                    data.setCodigoReferencia(node.get("codigo_referencia").asText());
+                else if (node.has("codigoReferencia"))
+                    data.setCodigoReferencia(node.get("codigoReferencia").asText());
+
                 // 3. Extract Error Information (Crucial for "Rechazo desconocido")
                 String errorMsg = null;
                 String errorCode = "UNKNOWN";
