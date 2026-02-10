@@ -26,6 +26,7 @@ jobs:
       - name: Build de producción
         run: npm run build
         env:
+          CI: false
           REACT_APP_API_URL: ${{ vars.API_URL }}
       
       - name: Configurar AWS
