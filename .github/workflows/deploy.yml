@@ -28,6 +28,7 @@ jobs:
         env:
           CI: false
           REACT_APP_API_URL: ${{ vars.API_URL }}
+          REACT_APP_API_BASE_URL: ${{ vars.API_URL }}
       
       - name: Configurar AWS
         uses: aws-actions/configure-aws-credentials@v4
