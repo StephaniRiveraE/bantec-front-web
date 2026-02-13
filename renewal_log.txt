@@ -1,2 +1,0 @@
-time="2026-02-01T19:17:18-05:00" level=warning msg="D:\\universidad\\Semestres\\8vo semestre\\arquitectura\\Bantec\\docker-compose.prod.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
-error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.49/networks?filters=%7B%22name%22%3A%7B%22bantec_bantec-prod-net%22%3Atrue%7D%7D": open //./pipe/dockerDesktopLinuxEngine: El sistema no puede encontrar el archivo especificado.
