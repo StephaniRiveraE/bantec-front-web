@@ -260,9 +260,9 @@ export async function validarCuentaExterna(targetBankId, targetAccountNumber) {
     }
 
     // Intento 2: Llamar directamente al Switch (fallback solo si hay error de conexión)
-    console.log("📡 Intentando Switch directo: /api/v2/switch/accounts/lookup");
+    console.log("📡 Intentando Switch directo: /api/v2/switch/account-lookup");
     try {
-      const switchResp = await request('/api/v2/switch/accounts/lookup', {
+      const switchResp = await request('/api/v2/switch/account-lookup', {
         method: 'POST',
         body: JSON.stringify(lookupPayload)
       });
