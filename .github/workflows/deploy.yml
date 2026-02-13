@@ -27,8 +27,8 @@ jobs:
         run: npm run build
         env:
           CI: false
-          REACT_APP_API_URL: ${{ vars.API_URL }}
-          REACT_APP_API_BASE_URL: ${{ vars.API_URL }}
+          REACT_APP_API_URL: http://k8s-bancaecosistemash-be991fd327-1419468438.us-east-2.elb.amazonaws.com/bantec
+          REACT_APP_API_BASE_URL: http://k8s-bancaecosistemash-be991fd327-1419468438.us-east-2.elb.amazonaws.com/bantec
       
       - name: Configurar AWS
         uses: aws-actions/configure-aws-credentials@v4
