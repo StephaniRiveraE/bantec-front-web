@@ -1,6 +1,6 @@
 import { apiFetch } from '../context/AuthContext'
 
-const GATEWAY_URL = process.env.REACT_APP_API_URL || "";
+const GATEWAY_URL = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || "";
 
 const ISO_ERROR_MAP = {
   "AC00": "¡Transferencia exitosa!",
